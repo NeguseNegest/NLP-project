@@ -11,9 +11,6 @@ CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent if CURRENT_DIR.name == "scr" else CURRENT_DIR
 NGRAM_DIR = PROJECT_ROOT / "scr" / "ngram"
 
-#MODEL_PATH = PROJECT_ROOT / "models" / "ngram" / "wikitext2_ngram_model.pkl"
-MODEL_PATH = PROJECT_ROOT / "models" / "ngram" / "Tiny_stories_ngram_model.pkl"
-
 sys.path.insert(0, str(NGRAM_DIR))
 
 from ngram_model import NGramModel
@@ -21,67 +18,64 @@ from ngram_model import NGramModel
 
 app = Flask(__name__)
 
-ngram_model = NGramModel.load(MODEL_PATH)
-BEST_LAMBDAS = {
-    1: 0.0,
-    2: 0.0,
-    3: 0.1,
-    4: 0.9,
+BEST_LAMBDAS = {1: 0.0, 2: 0.0, 3: 0.1, 4: 0.9}
+
+_NGRAM_PATHS = {
+    "tinystories": PROJECT_ROOT / "models" / "ngram" / "Tiny_stories_ngram_model.pkl",
+    "wikitext2":   PROJECT_ROOT / "models" / "ngram" / "wikitext2_ngram_model.pkl",
 }
 
-if not hasattr(ngram_model, "prefix_index") or not ngram_model.prefix_index:
-    ngram_model._build_prefix_index()
+NGRAM_MODELS = {}
+for _key, _path in _NGRAM_PATHS.items():
+    if _path.exists():
+        _m = NGramModel.load(_path)
+        if not hasattr(_m, "prefix_index") or not _m.prefix_index:
+            _m._build_prefix_index()
+        NGRAM_MODELS[_key] = _m
+        print(f"Loaded n-gram model [{_key}]: {_path.name}")
+    else:
+        print(f"Warning: model not found for [{_key}]: {_path}")
+
+if not NGRAM_MODELS:
+    raise RuntimeError("No n-gram models found. Train them first.")
+
+DEFAULT_DATASET = "tinystories" if "tinystories" in NGRAM_MODELS else next(iter(NGRAM_MODELS))
 
 
-SPECIAL_TOKENS = {
-    ngram_model.start_token,
-    ngram_model.end_token,
-    ngram_model.unk_token,
-}
-
-VOCAB = list(ngram_model.non_special_vocab)
-
-VOCAB.sort(key=lambda word: (-ngram_model.word_counts.get(word, 0), len(word), word))
-
-
-def fast_predict_interpolated(context, prefix, top_k=5, lambdas=BEST_LAMBDAS):
-    candidates = ngram_model.get_candidates(prefix)
-
-    scored_candidates = []
-
+def fast_predict_interpolated(context, prefix, model, top_k=5, lambdas=BEST_LAMBDAS):
+    candidates = model.get_candidates(prefix)
+    scored = []
     for word in candidates:
-        score = ngram_model.interpolated_probability(
-            context=context,
-            word=word,
-            lambdas=lambdas,
-        )
-        scored_candidates.append((word, score))
-
+        score = model.interpolated_probability(context=context, word=word, lambdas=lambdas)
+        scored.append((word, score))
     ranked = heapq.nsmallest(
         top_k,
-        scored_candidates,
+        scored,
         key=lambda item: (
             -item[1],
-            -ngram_model.word_counts.get(item[0], 0),
+            -model.word_counts.get(item[0], 0),
             len(item[0]),
             item[0],
         ),
     )
-
     return ranked, len(candidates)
 
-@lru_cache(maxsize=2048)
-def cached_suggest(text, top_k):
-    context, prefix = ngram_model.parse_text_input(text)
-    suggestions, candidate_count = fast_predict_interpolated(context=context, prefix=prefix, top_k=top_k)
 
+@lru_cache(maxsize=4096)
+def cached_suggest(text, top_k, dataset_key):
+    model = NGRAM_MODELS[dataset_key]
+    context, prefix = model.parse_text_input(text)
+    suggestions, candidate_count = fast_predict_interpolated(
+        context=context, prefix=prefix, model=model, top_k=top_k
+    )
     return context, prefix, suggestions, candidate_count
+
 
 HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>N-gram Word Predictor</title>
+    <title>Word Predictor</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -99,14 +93,9 @@ HTML = """
         --shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
     }
 
-    * {
-        box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html {
-        min-height: 100%;
-        color-scheme: dark;
-    }
+    html { min-height: 100%; color-scheme: dark; }
 
     body {
         min-height: 100vh;
@@ -138,9 +127,7 @@ HTML = """
         padding: 46px 0;
     }
 
-    .hero {
-        margin-bottom: 28px;
-    }
+    .hero { margin-bottom: 28px; }
 
     .eyebrow {
         display: inline-flex;
@@ -200,9 +187,7 @@ HTML = """
         backdrop-filter: blur(18px);
     }
 
-    .composer {
-        padding: 22px;
-    }
+    .composer { padding: 22px; }
 
     .suggestion-panel {
         padding: 18px;
@@ -238,6 +223,69 @@ HTML = """
         white-space: nowrap;
     }
 
+    /* ── selectors ── */
+    .selectors {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 14px;
+        padding: 14px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.028);
+    }
+
+    .selector-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .selector-label {
+        min-width: 52px;
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        flex-shrink: 0;
+    }
+
+    .toggle-group {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .toggle-btn {
+        padding: 5px 13px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--muted);
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+
+    .toggle-btn:hover:not(:disabled) {
+        border-color: rgba(34, 211, 238, 0.4);
+        color: #e2e8f0;
+    }
+
+    .toggle-btn.active {
+        border-color: rgba(139, 92, 246, 0.7);
+        background: rgba(139, 92, 246, 0.18);
+        color: #e9d5ff;
+        box-shadow: 0 0 14px rgba(139, 92, 246, 0.2);
+    }
+
+    .toggle-btn:disabled {
+        opacity: 0.38;
+        cursor: not-allowed;
+    }
+
     textarea {
         width: 100%;
         min-height: 240px;
@@ -257,9 +305,7 @@ HTML = """
         transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     }
 
-    textarea::placeholder {
-        color: #64748b;
-    }
+    textarea::placeholder { color: #64748b; }
 
     textarea:focus {
         outline: none;
@@ -302,12 +348,6 @@ HTML = """
         word-break: break-word;
     }
 
-    .status {
-        margin-top: 14px;
-        color: #a5f3fc;
-        font-size: 14px;
-    }
-
     .suggestions-list {
         display: flex;
         flex-direction: column;
@@ -342,9 +382,7 @@ HTML = """
         box-shadow: 0 16px 38px rgba(34, 211, 238, 0.12);
     }
 
-    .suggestion-button:active {
-        transform: translateY(0);
-    }
+    .suggestion-button:active { transform: translateY(0); }
 
     .rank {
         width: 34px;
@@ -409,50 +447,20 @@ HTML = """
         box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
     }
 
-    ::selection {
-        background: rgba(34, 211, 238, 0.35);
-    }
+    ::selection { background: rgba(34, 211, 238, 0.35); }
 
     @media (max-width: 860px) {
-        .workspace {
-            grid-template-columns: 1fr;
-        }
-
-        .suggestion-panel {
-            position: static;
-        }
-
-        .info-grid {
-            grid-template-columns: 1fr;
-        }
+        .workspace { grid-template-columns: 1fr; }
+        .suggestion-panel { position: static; }
+        .info-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 560px) {
-        .page {
-            width: min(100% - 24px, 1120px);
-            padding: 28px 0;
-        }
-
-        .composer,
-        .suggestion-panel {
-            padding: 16px;
-            border-radius: 22px;
-        }
-
-        textarea {
-            min-height: 190px;
-            font-size: 19px;
-            border-radius: 18px;
-        }
-
-        .suggestion-button {
-            grid-template-columns: 36px minmax(0, 1fr);
-        }
-
-        .score {
-            grid-column: 2;
-            width: fit-content;
-        }
+        .page { width: min(100% - 24px, 1120px); padding: 28px 0; }
+        .composer, .suggestion-panel { padding: 16px; border-radius: 22px; }
+        textarea { min-height: 190px; font-size: 19px; border-radius: 18px; }
+        .suggestion-button { grid-template-columns: 36px minmax(0, 1fr); }
+        .score { grid-column: 2; width: fit-content; }
     }
 </style>
 </head>
@@ -462,13 +470,13 @@ HTML = """
         <header class="hero">
             <div class="eyebrow">
                 <span class="dot"></span>
-                Local n-gram model
+                <span id="eyebrowText">N-gram · TinyStories</span>
             </div>
 
             <h1>Word Predictor</h1>
 
             <p class="subtitle">
-                Type a sentence and get ranked next-word or prefix-completion suggestions from your trained n-gram model.
+                Type a sentence and get ranked next-word or prefix-completion suggestions from your trained language model.
             </p>
         </header>
 
@@ -477,6 +485,23 @@ HTML = """
                 <div class="section-top">
                     <h2 class="section-title">Input text</h2>
                     <span class="pill" id="modeText">next-word prediction</span>
+                </div>
+
+                <div class="selectors">
+                    <div class="selector-row">
+                        <span class="selector-label">Model</span>
+                        <div class="toggle-group" id="modelGroup">
+                            <button class="toggle-btn active" data-model="ngram">N-gram</button>
+                            <button class="toggle-btn" data-model="transformer" disabled>Transformer</button>
+                        </div>
+                    </div>
+                    <div class="selector-row">
+                        <span class="selector-label">Dataset</span>
+                        <div class="toggle-group" id="datasetGroup">
+                            <button class="toggle-btn active" data-dataset="tinystories">TinyStories</button>
+                            <button class="toggle-btn" data-dataset="wikitext2">WikiText-2</button>
+                        </div>
+                    </div>
                 </div>
 
                 <textarea id="inputBox" placeholder="Start typing here..."></textarea>
@@ -516,16 +541,52 @@ HTML = """
     </div>
 
     <script>
-        const inputBox = document.getElementById("inputBox");
+        const inputBox       = document.getElementById("inputBox");
         const suggestionsDiv = document.getElementById("suggestions");
-        const contextText = document.getElementById("contextText");
-        const prefixText = document.getElementById("prefixText");
-        const modeText = document.getElementById("modeText");
-        const statusText = document.getElementById("statusText");
+        const contextText    = document.getElementById("contextText");
+        const prefixText     = document.getElementById("prefixText");
+        const modeText       = document.getElementById("modeText");
+        const statusText     = document.getElementById("statusText");
+        const eyebrowText    = document.getElementById("eyebrowText");
+
+        let selectedModel   = "ngram";
+        let selectedDataset = "tinystories";
 
         let debounceTimer = null;
         let currentAbortController = null;
         let latestRequestId = 0;
+
+        const MODEL_LABELS   = { ngram: "N-gram", transformer: "Transformer" };
+        const DATASET_LABELS = { tinystories: "TinyStories", wikitext2: "WikiText-2" };
+
+        function updateEyebrow() {
+            eyebrowText.textContent =
+                MODEL_LABELS[selectedModel] + " · " + DATASET_LABELS[selectedDataset];
+        }
+
+        function activateToggle(group, attr, value) {
+            group.querySelectorAll(".toggle-btn").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset[attr] === value);
+            });
+        }
+
+        document.getElementById("modelGroup").addEventListener("click", e => {
+            const btn = e.target.closest(".toggle-btn");
+            if (!btn || btn.disabled) return;
+            selectedModel = btn.dataset.model;
+            activateToggle(document.getElementById("modelGroup"), "model", selectedModel);
+            updateEyebrow();
+            scheduleFetchSuggestions();
+        });
+
+        document.getElementById("datasetGroup").addEventListener("click", e => {
+            const btn = e.target.closest(".toggle-btn");
+            if (!btn || btn.disabled) return;
+            selectedDataset = btn.dataset.dataset;
+            activateToggle(document.getElementById("datasetGroup"), "dataset", selectedDataset);
+            updateEyebrow();
+            scheduleFetchSuggestions();
+        });
 
         function parseTextClientSide(text) {
             const lowerText = text.toLowerCase();
@@ -533,48 +594,25 @@ HTML = """
             if (lowerText.endsWith(" ")) {
                 const trimmed = lowerText.trim();
                 const words = trimmed.length === 0 ? [] : trimmed.split(/\\s+/);
-
-                return {
-                    context: words,
-                    prefix: ""
-                };
+                return { context: words, prefix: "" };
             }
 
             const trimmed = lowerText.trim();
-
-            if (trimmed.length === 0) {
-                return {
-                    context: [],
-                    prefix: ""
-                };
-            }
+            if (trimmed.length === 0) return { context: [], prefix: "" };
 
             const words = trimmed.split(/\\s+/);
-
-            return {
-                context: words.slice(0, -1),
-                prefix: words[words.length - 1]
-            };
+            return { context: words.slice(0, -1), prefix: words[words.length - 1] };
         }
 
         function updateContextPrefixInstantly() {
             const parsed = parseTextClientSide(inputBox.value);
-
             contextText.textContent = JSON.stringify(parsed.context);
-            prefixText.textContent = parsed.prefix === "" ? "(empty)" : parsed.prefix;
-
-            if (parsed.prefix === "") {
-                modeText.textContent = "next-word prediction";
-            } else {
-                modeText.textContent = "prefix completion";
-            }
-
+            prefixText.textContent  = parsed.prefix === "" ? "(empty)" : parsed.prefix;
+            modeText.textContent    = parsed.prefix === "" ? "next-word prediction" : "prefix completion";
             return parsed;
         }
 
-        function clearSuggestions() {
-            suggestionsDiv.innerHTML = "";
-        }
+        function clearSuggestions() { suggestionsDiv.innerHTML = ""; }
 
         function renderSuggestions(data) {
             suggestionsDiv.innerHTML = "";
@@ -589,11 +627,11 @@ HTML = """
                 button.className = "suggestion-button";
                 button.type = "button";
 
-                const rankSpan = document.createElement("span");
+                const rankSpan  = document.createElement("span");
                 rankSpan.className = "rank";
                 rankSpan.textContent = String(index + 1).padStart(2, "0");
 
-                const wordSpan = document.createElement("span");
+                const wordSpan  = document.createElement("span");
                 wordSpan.className = "word";
                 wordSpan.textContent = item.word;
 
@@ -604,11 +642,7 @@ HTML = """
                 button.appendChild(rankSpan);
                 button.appendChild(wordSpan);
                 button.appendChild(scoreSpan);
-
-                button.addEventListener("click", () => {
-                    insertSuggestion(item.word);
-                });
-
+                button.addEventListener("click", () => insertSuggestion(item.word));
                 suggestionsDiv.appendChild(button);
             });
         }
@@ -617,10 +651,7 @@ HTML = """
             const text = inputBox.value;
             const requestId = ++latestRequestId;
 
-            if (currentAbortController !== null) {
-                currentAbortController.abort();
-            }
-
+            if (currentAbortController !== null) currentAbortController.abort();
             currentAbortController = new AbortController();
 
             statusText.textContent = "Updating...";
@@ -628,85 +659,60 @@ HTML = """
             try {
                 const response = await fetch("/suggest", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        text: text,
-                        top_k: 7
+                        text:    text,
+                        top_k:   7,
+                        model:   selectedModel,
+                        dataset: selectedDataset,
                     }),
-                    signal: currentAbortController.signal
+                    signal: currentAbortController.signal,
                 });
 
-                if (!response.ok) {
-                    throw new Error("Request failed.");
-                }
+                if (!response.ok) throw new Error("Request failed.");
 
                 const data = await response.json();
-
-                if (requestId !== latestRequestId) {
-                    return;
-                }
+                if (requestId !== latestRequestId) return;
 
                 contextText.textContent = JSON.stringify(data.context);
-                prefixText.textContent = data.prefix === "" ? "(empty)" : data.prefix;
-                modeText.textContent = data.mode;
+                prefixText.textContent  = data.prefix === "" ? "(empty)" : data.prefix;
+                modeText.textContent    = data.mode;
 
                 renderSuggestions(data);
-
                 statusText.textContent =
                     `${data.elapsed_ms.toFixed(1)} ms · ${data.candidate_count} candidates`;
 
             } catch (error) {
-                if (error.name === "AbortError") {
-                    return;
-                }
-
+                if (error.name === "AbortError") return;
                 statusText.textContent = "Could not update.";
             }
         }
 
         function scheduleFetchSuggestions() {
             updateContextPrefixInstantly();
-
-            if (debounceTimer !== null) {
-                clearTimeout(debounceTimer);
-            }
-
-            debounceTimer = setTimeout(() => {
-                fetchSuggestionsNow();
-            }, 70);
+            if (debounceTimer !== null) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchSuggestionsNow, 70);
         }
 
         function insertSuggestion(word) {
-            const text = inputBox.value;
+            const text   = inputBox.value;
             const parsed = parseTextClientSide(text);
+            let newText  = text;
 
-            let newText = text;
-
-            if (parsed.prefix.length > 0) {
-                newText = text.slice(0, text.length - parsed.prefix.length);
-            }
-
-            if (newText.length > 0 && !newText.endsWith(" ")) {
-                newText += " ";
-            }
+            if (parsed.prefix.length > 0) newText = text.slice(0, text.length - parsed.prefix.length);
+            if (newText.length > 0 && !newText.endsWith(" ")) newText += " ";
 
             inputBox.value = newText + word + " ";
             inputBox.focus();
-
             updateContextPrefixInstantly();
             clearSuggestions();
-
-            if (debounceTimer !== null) {
-                clearTimeout(debounceTimer);
-            }
-
+            if (debounceTimer !== null) clearTimeout(debounceTimer);
             fetchSuggestionsNow();
         }
 
         inputBox.addEventListener("input", scheduleFetchSuggestions);
 
+        updateEyebrow();
         updateContextPrefixInstantly();
         fetchSuggestionsNow();
     </script>
@@ -724,39 +730,28 @@ def home():
 def suggest():
     start_time = perf_counter()
 
-    data = request.get_json()
+    data = request.get_json() or {}
+    text        = data.get("text", "")
+    top_k       = max(1, min(int(data.get("top_k", 5)), 10))
+    dataset_key = data.get("dataset", DEFAULT_DATASET)
 
-    if data is None:
-        data = {}
+    if dataset_key not in NGRAM_MODELS:
+        dataset_key = DEFAULT_DATASET
 
-    text = data.get("text", "")
-    top_k = int(data.get("top_k", 5))
-    top_k = max(1, min(top_k, 10))
-
-    context, prefix, suggestions, candidate_count = cached_suggest(text, top_k)
-
+    context, prefix, suggestions, candidate_count = cached_suggest(text, top_k, dataset_key)
     elapsed_ms = (perf_counter() - start_time) * 1000
 
-    if prefix == "":
-        mode = "next-word prediction"
-    else:
-        mode = "prefix completion"
-
-    result = {
-        "context": context,
-        "prefix": prefix,
-        "mode": mode,
+    return jsonify({
+        "context":         context,
+        "prefix":          prefix,
+        "mode":            "prefix completion" if prefix else "next-word prediction",
         "candidate_count": candidate_count,
-        "elapsed_ms": elapsed_ms,
-        "suggestions": [{"word": word, "score": float(score)} for word, score in suggestions],
-    }
-
-    return jsonify(result)
+        "elapsed_ms":      elapsed_ms,
+        "dataset":         dataset_key,
+        "suggestions":     [{"word": word, "score": float(score)} for word, score in suggestions],
+    })
 
 
 if __name__ == "__main__":
-    print("Loaded model:")
-    print(ngram_model)
-    print("Vocabulary size:", len(VOCAB))
-    print("Prefix index size:", len(ngram_model.prefix_index))
+    print(f"Available models: {list(NGRAM_MODELS.keys())}")
     app.run(debug=True, use_reloader=False, threaded=True)
