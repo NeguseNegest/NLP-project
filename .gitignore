@@ -11,3 +11,4 @@ __pycache__/
 models/
 *.pkl
 scr/data/
+scr/data_analysis.ipynb

@@ -55,15 +55,17 @@ def tokenize_to_bin(text_path, tokenizer, bin_path):
 
 
 class TokenDataset(Dataset):
-    def __init__(self, bin_path, block_size):
+    def __init__(self, bin_path, block_size, stride=1):
         self.data = np.memmap(str(bin_path), dtype=np.uint16, mode="r")
         self.block_size = block_size
+        self.stride = stride
 
     def __len__(self):
-        return len(self.data) - self.block_size
+        return (len(self.data) - self.block_size) // self.stride
 
     def __getitem__(self, idx):
-        chunk = self.data[idx: idx + self.block_size + 1]
+        start = idx * self.stride
+        chunk = self.data[start: start + self.block_size + 1]
         x = torch.from_numpy(chunk[:-1].astype(np.int64))
         y = torch.from_numpy(chunk[1:].astype(np.int64))
         return x, y
@@ -155,8 +157,8 @@ def train(args):
 
     criterion = nn.CrossEntropyLoss()
 
-    train_dataset = TokenDataset(train_bin, config.block_size)
-    val_dataset = TokenDataset(val_bin, config.block_size)
+    train_dataset = TokenDataset(train_bin, config.block_size, stride=args.stride)
+    val_dataset = TokenDataset(val_bin, config.block_size, stride=config.block_size)
     val_indices = list(range(0, len(val_dataset), config.block_size))
     val_subset = torch.utils.data.Subset(val_dataset, val_indices)
     val_loader = DataLoader(val_subset, config.batch_size, pin_memory=(device == "cuda"), num_workers=2)
@@ -238,6 +240,7 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--weight_decay", type=float, default=1e-6)
     parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--stride", type=int, default=1)
 
     return parser.parse_args()
 
