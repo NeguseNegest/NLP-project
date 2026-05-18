@@ -235,17 +235,17 @@ def main():
 
     model_path = (
         args.model_path
-        or project_root / "models/ngram/Tiny_stories_ngram_model.pkl"
+        or project_root / "models/ngram/Wikitext2_ngram_model.pkl"
     )
 
     test_path = (
         args.test_path
-        or project_root / "scr/data/tiny_stories/tinystories_test.txt"
+        or project_root / "scr/data/wikitext_2/wikitext2_test.txt"
     )
 
     test_results_path = (
         args.test_results_path
-        or project_root / "results/metrics/ngram_test_results_top_1_to_4.json"
+        or project_root / "results/metrics/ngram_test_results_top_1_to_4_Wikitext2.json"
     )
 
     max_test_sentences = args.max_test_sentences

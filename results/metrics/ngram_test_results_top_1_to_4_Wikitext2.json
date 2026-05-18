@@ -1,0 +1,92 @@
+{
+    "top_k_values": [
+        1,
+        2,
+        3,
+        4
+    ],
+    "lambdas": {
+        "1": 0.0,
+        "2": 0.1,
+        "3": 0.9,
+        "4": 0.0
+    },
+    "include_empty_prefix": false,
+    "max_test_sentences": 4000,
+    "model_path": "/Users/hej/NLP-project/models/ngram/Wikitext2_ngram_model.pkl",
+    "test_path": "/Users/hej/NLP-project/scr/data/wikitext_2/wikitext2_test.txt",
+    "results_by_top_k": {
+        "1": {
+            "top_k": 1,
+            "total_words": 80443,
+            "total_characters": 384601,
+            "saved_keystrokes": 154382,
+            "saved_keystroke_ratio": 0.40140821266715376,
+            "top_k_correct_words": 13344,
+            "top_k_accuracy": 0.16588143157266635,
+            "cross_entropy": 9.702462832380936,
+            "perplexity": 16357.844257630471,
+            "lambdas": {
+                "1": 0.0,
+                "2": 0.1,
+                "3": 0.9,
+                "4": 0.0
+            },
+            "include_empty_prefix": false
+        },
+        "2": {
+            "top_k": 2,
+            "total_words": 80443,
+            "total_characters": 384601,
+            "saved_keystrokes": 188005,
+            "saved_keystroke_ratio": 0.48883128228995765,
+            "top_k_correct_words": 17926,
+            "top_k_accuracy": 0.22284101786358043,
+            "cross_entropy": 9.702462832380936,
+            "perplexity": 16357.844257630471,
+            "lambdas": {
+                "1": 0.0,
+                "2": 0.1,
+                "3": 0.9,
+                "4": 0.0
+            },
+            "include_empty_prefix": false
+        },
+        "3": {
+            "top_k": 3,
+            "total_words": 80443,
+            "total_characters": 384601,
+            "saved_keystrokes": 203401,
+            "saved_keystroke_ratio": 0.5288623794529915,
+            "top_k_correct_words": 20978,
+            "top_k_accuracy": 0.2607809256243551,
+            "cross_entropy": 9.702462832380936,
+            "perplexity": 16357.844257630471,
+            "lambdas": {
+                "1": 0.0,
+                "2": 0.1,
+                "3": 0.9,
+                "4": 0.0
+            },
+            "include_empty_prefix": false
+        },
+        "4": {
+            "top_k": 4,
+            "total_words": 80443,
+            "total_characters": 384601,
+            "saved_keystrokes": 212670,
+            "saved_keystroke_ratio": 0.552962680804262,
+            "top_k_correct_words": 23072,
+            "top_k_accuracy": 0.28681177976952626,
+            "cross_entropy": 9.702462832380936,
+            "perplexity": 16357.844257630471,
+            "lambdas": {
+                "1": 0.0,
+                "2": 0.1,
+                "3": 0.9,
+                "4": 0.0
+            },
+            "include_empty_prefix": false
+        }
+    }
+}

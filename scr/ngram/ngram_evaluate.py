@@ -90,7 +90,7 @@ def tune_lambdas_one_validation_pass(
     val_sentences,
     top_k=5,
     grid_step=0.1,
-    max_eval_sentences=None,
+    max_eval_sentences=1000,
     include_empty_prefix=False,
 ):
     """
@@ -562,7 +562,6 @@ def parse_args():
     parser.add_argument(
         "--max_val_sentences",
         type=int,
-        default=5000,
         help="Use 0 or a negative value to evaluate all validation sentences.",
     )
 
@@ -584,27 +583,27 @@ def main():
 
     project_root = args.project_root
 
-    model_path = args.model_path or project_root / "models/ngram/ngram_model.pkl"
-    val_path = args.val_path or project_root / "scr/data/tiny_stories/tinystories_val.txt"
+    model_path = args.model_path or project_root / "models/ngram/Wikitext2_ngram_model.pkl"
+    val_path = args.val_path or project_root / "scr/data/wikitext_2/wikitext2_val.txt"
 
     best_lambdas_path = (
         args.best_lambdas_path
-        or project_root / "results/metrics/best_ngram_lambdas.json"
+        or project_root / "results/metrics/best_ngram_lambdasWikitext2.json"
     )
 
     validation_results_path = (
         args.validation_results_path
-        or project_root / "results/metrics/ngram_validation_results.json"
+        or project_root / "results/metrics/ngram_validation_resultsWikitext2.json"
     )
 
     best_lambdas_plot_path = (
         args.best_lambdas_plot_path
-        or project_root / "results/plots/best_ngram_lambdas.png"
+        or project_root / "results/plots/best_ngram_lambdasWikitext2.png"
     )
 
     top_lambdas_plot_path = (
         args.top_lambdas_plot_path
-        or project_root / "results/plots/top_ngram_lambdas.png"
+        or project_root / "results/plots/top_ngram_lambdasWikitext2.png"
     )
 
     top_k = args.top_k
