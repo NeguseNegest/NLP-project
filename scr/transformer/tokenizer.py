@@ -55,7 +55,7 @@ class TinyStoriesTokenizer:
         word_freqs = self._generate_word_frequencies(words)
 
         unique_chars = set(char for word_tuple in word_freqs for char in word_tuple)
-        self.vocab = list(unique_chars)
+        self.vocab = ["<UNK>"] + list(unique_chars)
 
         num_merges = self.vocab_size - len(self.vocab)
         for i in range(num_merges):

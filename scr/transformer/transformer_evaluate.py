@@ -15,6 +15,8 @@ TOP_K_VALUES = [1, 2, 3, 4]
 MAX_TOP_K = max(TOP_K_VALUES)
 
 
+_STRIP_CHARS = ".,!?;:\"'()[]{}@-"
+
 def load_sentences(path, max_sentences=None):
     sentences = []
     with open(path, "r", encoding="utf-8") as f:
@@ -43,13 +45,19 @@ def evaluate(predictor, sentences):
     for sentence in tqdm(sentences, desc="Evaluating transformer"):
         sentence = [w for w in sentence if w]
 
-        for i, target_word in enumerate(sentence):
+        for i, raw_word in enumerate(sentence):
+            target_word = raw_word.strip(_STRIP_CHARS)
+            if not target_word:
+                continue
             context = sentence[:i]
             total_words += 1
             total_characters += len(target_word)
 
-            if target_word not in predictor.prefix_index.get(target_word, [target_word]):
+            if target_word not in predictor.word_vocab_set:
                 continue
+
+            found = {k: False for k in TOP_K_VALUES}
+            chars_found = {k: len(target_word) for k in TOP_K_VALUES}
 
             empty_suggestions = predictor.predict(
                 context, prefix="", top_k=MAX_TOP_K, include_scores=False
@@ -58,10 +66,8 @@ def evaluate(predictor, sentences):
             if empty_rank is not None:
                 for k in TOP_K_VALUES:
                     if empty_rank <= k:
-                        top_k_correct_by_k[k] += 1
-
-            found = {k: False for k in TOP_K_VALUES}
-            chars_found = {k: len(target_word) for k in TOP_K_VALUES}
+                        found[k] = True
+                        chars_found[k] = 0
 
             for chars_typed in range(1, len(target_word) + 1):
                 if all(found.values()):
@@ -79,6 +85,8 @@ def evaluate(predictor, sentences):
                         chars_found[k] = chars_typed
 
             for k in TOP_K_VALUES:
+                if found[k]:
+                    top_k_correct_by_k[k] += 1
                 saved_by_k[k] += max(0, len(target_word) - chars_found[k])
 
     results = {}
@@ -131,16 +139,21 @@ def main():
     args = parse_args()
     project_root = Path(args.project_root)
 
-    model_dir = project_root / "models/transformer/tinystories"
-    checkpoint_path = args.checkpoint_path or str(model_dir / "checkpoint.pt")
-    tokenizer_path = args.tokenizer_path or str(model_dir / "tokenizer.json")
-
     if args.dataset == "wikitext2":
+        model_dir = project_root / "models/transformer/wikitext2"
         default_test = project_root / "scr/data/wikitext_2_transformer/wikitext2_transformer_test.txt"
         default_results = project_root / "results/metrics/transformer_wikitext2_test_results.json"
+        default_ngram = project_root / "models/ngram/wikitext2_ngram_model.pkl"
+        default_train = project_root / "scr/data/wikitext_2_transformer/wikitext2_transformer_train.txt"
     else:
+        model_dir = project_root / "models/transformer/tinystories"
         default_test = project_root / "scr/data/tiny_stories_transformer/tinystories_transformer_test.txt"
         default_results = project_root / "results/metrics/transformer_tinystories_test_results.json"
+        default_ngram = project_root / "models/ngram/Tiny_stories_ngram_model.pkl"
+        default_train = project_root / "scr/data/tiny_stories_transformer/tinystories_transformer_train.txt"
+
+    checkpoint_path = args.checkpoint_path or str(model_dir / "checkpoint_final.pt")
+    tokenizer_path = args.tokenizer_path or str(model_dir / "tokenizer.json")
 
     test_path = args.test_path or str(default_test)
     results_path = args.results_path or str(default_results)
@@ -158,12 +171,10 @@ def main():
     elif args.vocab_train_text:
         predictor.build_word_vocab_from_text(args.vocab_train_text)
     else:
-        default_ngram = project_root / "models/ngram/Tiny_stories_ngram_model.pkl"
         if default_ngram.exists():
             predictor.load_word_vocab_from_ngram(str(default_ngram))
         else:
-            fallback = project_root / "scr/data/tiny_stories_transformer/tinystories_transformer_train.txt"
-            predictor.build_word_vocab_from_text(str(fallback))
+            predictor.build_word_vocab_from_text(str(default_train))
 
     print(f"Word vocab size: {len(predictor.word_vocab):,}")
 

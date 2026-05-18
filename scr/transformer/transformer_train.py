@@ -102,6 +102,45 @@ def save_checkpoint(model, optimizer, config, epoch, iteration, path):
     print(f"Checkpoint saved: {path}")
 
 
+def save_plots(train_log, val_log, best_step, best_val_loss, epoch_boundaries, plot_path):
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("matplotlib not available, skipping plot")
+        return
+
+    steps_t, losses_t = zip(*train_log) if train_log else ([], [])
+    steps_v, losses_v = zip(*val_log) if val_log else ([], [])
+
+    fig, ax = plt.subplots(figsize=(14, 5))
+    ax.plot(steps_t, losses_t, label="Train loss", alpha=0.6, linewidth=1, color="steelblue")
+    ax.plot(steps_v, losses_v, label="Val loss", linewidth=1.5, color="darkorange")
+
+    for i, eb in enumerate(epoch_boundaries):
+        ax.axvline(x=eb, color="gray", linestyle=":", linewidth=0.8,
+                   label="Epoch boundary" if i == 0 else None)
+
+    if best_step:
+        ax.axvline(x=best_step, color="red", linestyle="--", linewidth=1.2,
+                   label=f"Best checkpoint (step {best_step}, val={best_val_loss:.4f})")
+        ax.scatter([best_step], [best_val_loss], color="red", zorder=5, s=100, marker="*")
+
+    ax.set_xlabel("Global step")
+    ax.set_ylabel("Loss")
+    ax.set_title("Transformer training curve")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    plot_path = Path(plot_path)
+    plot_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(str(plot_path), dpi=150)
+    plt.close()
+    print(f"Plot saved: {plot_path}")
+
+
 def train(args):
     train_text = Path(args.train_text)
     val_text = Path(args.val_text)
@@ -172,6 +211,12 @@ def train(args):
 
     model.train()
     running_loss = 0.0
+    best_val_loss = float("inf")
+    best_step = 0
+    global_step = 0
+    train_log = []
+    val_log = []
+    epoch_boundaries = []
     print(f"\n{datetime.now().strftime('%X')} Training starts")
 
     for epoch in range(start_epoch, config.no_of_epochs):
@@ -182,6 +227,12 @@ def train(args):
         train_loader = DataLoader(
             train_dataset, batch_size=config.batch_size, sampler=sampler, num_workers=2
         )
+        iters_per_epoch = len(train_loader) + iteration
+        print(f"\n{'─' * 60}")
+        print(f"  Epoch {epoch+1}/{config.no_of_epochs}  |  "
+              f"{iters_per_epoch:,} iters this epoch  |  "
+              f"batch_size={config.batch_size}  stride={args.stride}")
+        print(f"{'─' * 60}")
 
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
@@ -192,8 +243,9 @@ def train(args):
             optimizer.step()
             running_loss += loss.detach().item()
             iteration += 1
+            global_step += 1
 
-            if iteration % 100 == 0:
+            if global_step % 100 == 0:
                 model.eval()
                 with torch.no_grad():
                     val_loss = sum(
@@ -203,18 +255,34 @@ def train(args):
                         ).item()
                         for vx, vy in val_loader
                     )
+                avg_train_loss = running_loss / 100
+                avg_val_loss = val_loss / len(val_loader)
+                train_log.append((global_step, avg_train_loss))
+                val_log.append((global_step, avg_val_loss))
+
+                if avg_val_loss < best_val_loss:
+                    best_val_loss = avg_val_loss
+                    best_step = global_step
+                    save_checkpoint(model, optimizer, config, epoch, iteration, checkpoint_path)
+                    marker = "  [best]"
+                else:
+                    marker = ""
                 print(
-                    f"{datetime.now().strftime('%X')} Epoch {epoch+1}, iter {iteration}: "
-                    f"loss={running_loss/100:.4f}, val_loss={val_loss/len(val_loader):.4f}"
+                    f"{datetime.now().strftime('%X')} "
+                    f"[{epoch+1}/{config.no_of_epochs}] "
+                    f"iter {iteration}/{iters_per_epoch} (global {global_step}): "
+                    f"loss={avg_train_loss:.4f}  val={avg_val_loss:.4f}{marker}"
                 )
                 model.train()
                 running_loss = 0.0
 
-            if iteration % 10000 == 0:
-                save_checkpoint(model, optimizer, config, epoch, iteration, checkpoint_path)
+        print(f"{datetime.now().strftime('%X')} Epoch {epoch+1} done. "
+              f"Best val so far: {best_val_loss:.4f} (global step {best_step})")
+        if epoch < config.no_of_epochs - 1:
+            epoch_boundaries.append(global_step)
 
-    save_checkpoint(model, optimizer, config, config.no_of_epochs - 1, iteration, checkpoint_path)
-    print(f"\nTraining complete. Checkpoint: {checkpoint_path}")
+    save_plots(train_log, val_log, best_step, best_val_loss, epoch_boundaries, args.plot_path)
+    print(f"\nTraining complete. Best val_loss={best_val_loss:.4f}. Checkpoint: {checkpoint_path}")
 
 
 def parse_args():
@@ -239,8 +307,9 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--weight_decay", type=float, default=1e-6)
-    parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--stride", type=int, default=1)
+    parser.add_argument("--plot_path", default=None)
 
     return parser.parse_args()
 
@@ -263,7 +332,10 @@ def main():
     args.tokenizer_path = args.tokenizer_path or str(model_dir / "tokenizer.json")
     args.train_bin = args.train_bin or str(model_dir / "train.bin")
     args.val_bin = args.val_bin or str(model_dir / "val.bin")
-    args.checkpoint_path = args.checkpoint_path or str(model_dir / "checkpoint.pt")
+    args.checkpoint_path = args.checkpoint_path or str(model_dir / "checkpoint_final.pt")
+    args.plot_path = args.plot_path or str(
+        project_root / f"results/plots/{prefix}_transformer_final_training.png"
+    )
 
     print(f"Dataset: {args.dataset}")
     print(f"Train:   {args.train_text}")

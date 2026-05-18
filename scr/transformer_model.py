@@ -1,4 +1,5 @@
 import heapq
+import math
 import pickle
 import sys
 from dataclasses import dataclass
@@ -94,10 +95,17 @@ class TransformerPredictor:
         self.model.eval()
 
         self.word_vocab = []
+        self.word_vocab_set = set()
         self.word_counts = {}
         self.prefix_index = {}
+        self._word_tokens = {}
+        self._logits_cache_key = None
+        self._logits_cache_probs = None
 
     def load_word_vocab_from_ngram(self, ngram_model_path):
+        ngram_dir = str(Path(ngram_model_path).resolve().parents[2] / "scr" / "ngram")
+        if ngram_dir not in sys.path:
+            sys.path.insert(0, ngram_dir)
         with open(ngram_model_path, "rb") as f:
             ngram = pickle.load(f)
         special = {ngram.start_token, ngram.end_token, ngram.unk_token}
@@ -121,6 +129,7 @@ class TransformerPredictor:
         print(f"Built vocab of {len(self.word_vocab):,} words from {text_path}.")
 
     def _build_prefix_index(self):
+        self.word_vocab_set = set(self.word_vocab)
         self.prefix_index = {"": list(self.word_vocab)}
         for word in self.word_vocab:
             for i in range(1, len(word) + 1):
@@ -128,6 +137,11 @@ class TransformerPredictor:
                 if prefix not in self.prefix_index:
                     self.prefix_index[prefix] = []
                 self.prefix_index[prefix].append(word)
+        self._word_tokens = {}
+        for word in self.word_vocab:
+            _, ids = self.tokenizer.tokenize(" " + word)
+            self._word_tokens[word] = ids if ids else [0]
+        print(f"Pre-tokenized {len(self._word_tokens):,} words.")
 
     def parse_text_input(self, text):
         if not text:
@@ -167,34 +181,65 @@ class TransformerPredictor:
         return self.predict(context, prefix, top_k, include_scores)
 
     def _score_candidates(self, context, candidates):
-        # Score each candidate by the probability of its first BPE token given the context.
-        # This is an approximation — two words sharing the same first token get the same score,
-        # but in practice the prefix filter makes collisions rare.
         context_text = " ".join(context)
 
         if not context_text:
             freq_total = sum(self.word_counts.get(w, 1) for w in candidates)
             return [self.word_counts.get(w, 1) / freq_total for w in candidates]
 
-        _, context_ids = self.tokenizer.tokenize(context_text)
+        _, context_ids = self.tokenizer.tokenize(" " + context_text)
         if not context_ids:
             return [1.0 / len(candidates)] * len(candidates)
 
         context_ids = context_ids[-(self.model.config.block_size - 1):]
-        x = torch.tensor(context_ids, dtype=torch.long, device=self.device).unsqueeze(0)
+        ctx_len = len(context_ids)
+        block_size = self.model.config.block_size
+        cache_key = tuple(context_ids)
 
-        with torch.no_grad():
-            logits = self.model(x)
+        word_toks_list = [self._word_tokens.get(w, [0]) for w in candidates]
 
-        next_probs = torch.softmax(logits[0, -1, :], dim=-1).cpu()
-        vocab_size = len(next_probs)
+        single_indices = [i for i, toks in enumerate(word_toks_list) if len(toks) == 1]
+        multi_indices  = [i for i, toks in enumerate(word_toks_list) if len(toks) > 1]
 
-        scores = []
-        for word in candidates:
-            _, word_ids = self.tokenizer.tokenize(" " + word)
-            if not word_ids or word_ids[0] >= vocab_size:
-                scores.append(0.0)
-            else:
-                scores.append(next_probs[word_ids[0]].item())
+        all_scores = [0.0] * len(candidates)
 
-        return scores
+        if single_indices:
+            if cache_key != self._logits_cache_key:
+                x = torch.tensor(context_ids, dtype=torch.long, device=self.device).unsqueeze(0)
+                with torch.no_grad():
+                    logits = self.model(x)
+                self._logits_cache_probs = torch.softmax(logits[0, -1, :], dim=-1).cpu()
+                self._logits_cache_key = cache_key
+            probs = self._logits_cache_probs
+            vocab_size = len(probs)
+            for i in single_indices:
+                tid = word_toks_list[i][0]
+                all_scores[i] = probs[tid].item() if tid < vocab_size else 0.0
+
+        if multi_indices:
+            CHUNK_SIZE = 128
+            for chunk_start in range(0, len(multi_indices), CHUNK_SIZE):
+                chunk_idx = multi_indices[chunk_start:chunk_start + CHUNK_SIZE]
+                chunk_toks = [word_toks_list[i] for i in chunk_idx]
+                max_word_len = max(len(toks) for toks in chunk_toks)
+                target_len = min(ctx_len + max_word_len - 1, block_size)
+
+                batch = []
+                for toks in chunk_toks:
+                    inp = (context_ids + list(toks[:-1]))[-block_size:]
+                    inp = inp + [0] * max(0, target_len - len(inp))
+                    batch.append(inp[:target_len])
+
+                x = torch.tensor(batch, dtype=torch.long, device=self.device)
+                with torch.no_grad():
+                    logits = self.model(x)
+                log_p = torch.log_softmax(logits, dim=-1).cpu()
+
+                for k, (orig_i, toks) in enumerate(zip(chunk_idx, chunk_toks)):
+                    score = 0.0
+                    for j, tok_id in enumerate(toks):
+                        pos = min(ctx_len - 1 + j, log_p.shape[1] - 1)
+                        score += log_p[k, pos, tok_id].item() if tok_id < log_p.shape[2] else -20.0
+                    all_scores[orig_i] = math.exp(score)
+
+        return all_scores

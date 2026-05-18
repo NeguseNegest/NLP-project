@@ -4,6 +4,13 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+_log_file = None
+
+def log(*args, **kwargs):
+    print(*args, **kwargs)
+    if _log_file is not None:
+        print(*args, **kwargs, file=_log_file, flush=True)
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -33,8 +40,7 @@ ARCH_GRID = [
 STRIDE_LEVELS = [8, 32, 64]
 TOP_K_VALUES  = [1, 2, 3, 4]
 
-
-def train_model(arch, stride, args, device, train_bin, val_loader, tokenizer):
+def train_model(arch, stride, args, device, train_bin, val_loader, tokenizer, checkpoint_path):
     config = Config(
         vocab_size=tokenizer.vocab_size,
         number_of_transformer_blocks=arch["n_blocks"],
@@ -61,18 +67,20 @@ def train_model(arch, stride, args, device, train_bin, val_loader, tokenizer):
         train_dataset, batch_size=config.batch_size, sampler=sampler, num_workers=2
     )
 
-    print(
+    log(
         f"\n{'=' * 68}\n"
         f"  arch={arch['name']:8s}  stride={stride:>3}  |  "
         f"{arch['n_blocks']} blocks, {arch['n_heads']} heads, dim={arch['vector_dim']}  |  {n_params:,} params\n"
         f"{'=' * 68}"
     )
-    print(f"{datetime.now().strftime('%X')} Training  (max {args.max_iters} iters, stride={stride})")
+    log(f"{datetime.now().strftime('%X')} Training  (max {args.max_iters} iters, stride={stride})")
 
     model.train()
     running_loss = 0.0
-    iteration    = 0
+    iteration = 0
     final_val_loss = None
+    best_val_loss = float("inf")
+    best_iteration = 0
 
     for x, y in train_loader:
         if iteration >= args.max_iters:
@@ -97,15 +105,31 @@ def train_model(arch, stride, args, device, train_bin, val_loader, tokenizer):
                     ).item()
                     for vx, vy in val_loader
                 )
+
             final_val_loss = v_loss / len(val_loader)
-            print(
+
+            if final_val_loss < best_val_loss:
+                best_val_loss = final_val_loss
+                best_iteration = iteration
+                save_checkpoint(model, optimizer, config, 0, iteration, checkpoint_path)
+                best_marker = "  [best]"
+            else:
+                best_marker = ""
+
+            log(
                 f"{datetime.now().strftime('%X')} iter {iteration:>6}: "
                 f"loss={running_loss / 100:.4f}  val_loss={final_val_loss:.4f}"
+                f"{best_marker}"
             )
             model.train()
             running_loss = 0.0
 
-    return model, config, n_params, iteration, final_val_loss
+    if best_iteration == 0:
+        save_checkpoint(model, optimizer, config, 0, iteration, checkpoint_path)
+        best_val_loss = final_val_loss
+        best_iteration = iteration
+
+    return model, config, n_params, iteration, best_val_loss
 
 
 def quick_evaluate(checkpoint_path, tokenizer_path, test_sentences, vocab_source, device):
@@ -133,7 +157,7 @@ def parse_args():
     parser.add_argument("--lr",           type=float, default=5e-4)
     parser.add_argument("--weight_decay", type=float, default=1e-6)
     parser.add_argument("--vocab_size",   type=int,   default=5000)
-    parser.add_argument("--max_eval_sentences", type=int, default=500,
+    parser.add_argument("--max_eval_sentences", type=int, default=200,
                         help="Test sentences used for quick evaluation per run")
     parser.add_argument("--device",       default=None)
 
@@ -141,8 +165,12 @@ def parse_args():
 
 
 def main():
+    global _log_file
     args = parse_args()
     project_root = Path(args.project_root)
+
+    if args.vocab_size is None:
+        args.vocab_size = 8000 if args.dataset == "wikitext2" else 5000
 
     if args.dataset == "wikitext2":
         data_dir   = project_root / "scr/data/wikitext_2_transformer"
@@ -163,6 +191,11 @@ def main():
     val_bin        = model_dir / "val.bin"
     model_dir.mkdir(parents=True, exist_ok=True)
 
+    log_path = project_root / f"results/metrics/{prefix}_transformer_grid_search.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    _log_file = open(log_path, "w", encoding="utf-8")
+    log(f"Grid search started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
     if args.device:
         device = args.device
     elif torch.cuda.is_available():
@@ -172,12 +205,12 @@ def main():
     else:
         device = "cpu"
 
-    print(f"Dataset : {args.dataset}")
-    print(f"Device  : {device}")
-    print(f"Max iter: {args.max_iters}")
-    print(f"Archs   : {[a['name'] for a in ARCH_GRID]}")
-    print(f"Strides : {STRIDE_LEVELS}")
-    print(f"Eval on : {args.max_eval_sentences} test sentences per run")
+    log(f"Dataset : {args.dataset}")
+    log(f"Device  : {device}")
+    log(f"Max iter: {args.max_iters}")
+    log(f"Archs   : {[a['name'] for a in ARCH_GRID]}")
+    log(f"Strides : {STRIDE_LEVELS}")
+    log(f"Eval on : {args.max_eval_sentences} test sentences per run")
 
     tokenizer = train_or_load_tokenizer(
         train_text, tokenizer_path, vocab_size=args.vocab_size, max_tokenizer_lines=None
@@ -195,23 +228,22 @@ def main():
 
     vocab_source = str(ngram_pkl) if ngram_pkl.exists() else str(train_text)
     test_sentences = load_sentences(str(test_text), max_sentences=args.max_eval_sentences)
-    print(f"\nLoaded {len(test_sentences)} test sentences for evaluation.")
+    log(f"\nLoaded {len(test_sentences)} test sentences for evaluation.")
 
     all_results = []
 
     for arch in ARCH_GRID:
         for stride in STRIDE_LEVELS:
-            model, config, n_params, iters, val_loss = train_model(
-                arch, stride, args, device, train_bin, val_loader, tokenizer
-            )
-
             checkpoint_path = model_dir / f"{prefix}_grid_{arch['name']}_s{stride}_checkpoint.pt"
-            save_checkpoint(model, torch.optim.AdamW(model.parameters()), config, 0, iters, checkpoint_path)
+
+            model, config, n_params, iters, val_loss = train_model(
+                arch, stride, args, device, train_bin, val_loader, tokenizer, checkpoint_path
+            )
             del model
             if device == "cuda":
                 torch.cuda.empty_cache()
 
-            print(f"{datetime.now().strftime('%X')} Running evaluation on {len(test_sentences)} sentences...")
+            log(f"{datetime.now().strftime('%X')} Running evaluation on {len(test_sentences)} sentences...")
             eval_results = quick_evaluate(
                 checkpoint_path, tokenizer_path, test_sentences, vocab_source, device
             )
@@ -236,24 +268,24 @@ def main():
             }
             all_results.append(row)
 
-            print(
+            log(
                 f"  val_loss={val_loss:.4f}  "
                 f"top1_acc={eval_results[1]['top_k_accuracy']:.4f}  "
                 f"saved_ratio={eval_results[1]['saved_keystroke_ratio']:.4f}"
             )
 
-    print(f"\n{'=' * 100}")
-    print(f"{'Grid search summary — sorted by top-1 accuracy':^100}")
-    print(f"{'=' * 100}")
+    log(f"\n{'=' * 100}")
+    log(f"{'Grid search summary — sorted by top-1 accuracy':^100}")
+    log(f"{'=' * 100}")
     header = (
         f"{'Arch':<10} {'Stride':>6} {'Blocks':>6} {'Heads':>5} {'Dim':>5} "
         f"{'Params':>10} {'ValLoss':>8} "
         f"{'Top1':>6} {'Top2':>6} {'Top3':>6} {'Top4':>6} {'KS-ratio':>9}"
     )
-    print(header)
-    print("-" * 100)
+    log(header)
+    log("-" * 100)
     for r in sorted(all_results, key=lambda x: -x["eval"]["1"]["top_k_accuracy"]):
-        print(
+        log(
             f"{r['arch']:<10} {r['stride']:>6} {r['n_blocks']:>6} {r['n_heads']:>5} {r['vector_dim']:>5} "
             f"{r['n_params']:>10,} {r['val_loss']:>8.4f} "
             f"{r['eval']['1']['top_k_accuracy']:>6.4f} "
@@ -270,7 +302,9 @@ def main():
             {"dataset": args.dataset, "max_iters": args.max_iters, "runs": all_results},
             f, indent=4,
         )
-    print(f"\nFull results saved to {results_path}")
+    log(f"\nFull results saved to {results_path}")
+    log(f"Log saved to {log_path}")
+    _log_file.close()
 
 
 if __name__ == "__main__":
