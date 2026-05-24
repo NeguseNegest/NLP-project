@@ -1,0 +1,1054 @@
+{
+    "dataset": "tinystories",
+    "strategy": "s3",
+    "loaded_examples": 1000,
+    "evaluated_examples": 999,
+    "skipped_oov_examples": 1,
+    "results_by_top_k": {
+        "1": {
+            "top_k": 1,
+            "total_examples": 999,
+            "total_characters": 4766,
+            "top_k_correct_words": 784,
+            "top_k_accuracy": 0.7847847847847848,
+            "saved_keystrokes": 1673,
+            "saved_keystroke_ratio": 0.35102811582039445
+        },
+        "2": {
+            "top_k": 2,
+            "total_examples": 999,
+            "total_characters": 4766,
+            "top_k_correct_words": 857,
+            "top_k_accuracy": 0.8578578578578578,
+            "saved_keystrokes": 2102,
+            "saved_keystroke_ratio": 0.4410407049937054
+        },
+        "3": {
+            "top_k": 3,
+            "total_examples": 999,
+            "total_characters": 4766,
+            "top_k_correct_words": 891,
+            "top_k_accuracy": 0.8918918918918919,
+            "saved_keystrokes": 2342,
+            "saved_keystroke_ratio": 0.4913973982375157
+        },
+        "4": {
+            "top_k": 4,
+            "total_examples": 999,
+            "total_characters": 4766,
+            "top_k_correct_words": 908,
+            "top_k_accuracy": 0.908908908908909,
+            "saved_keystrokes": 2497,
+            "saved_keystroke_ratio": 0.5239194292908099
+        }
+    },
+    "breakdowns": {
+        "by_edit_type": {
+            "deletion+deletion": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 30,
+                    "total_characters": 174,
+                    "top_k_correct_words": 11,
+                    "top_k_accuracy": 0.36666666666666664,
+                    "saved_keystrokes": 43,
+                    "saved_keystroke_ratio": 0.2471264367816092
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 30,
+                    "total_characters": 174,
+                    "top_k_correct_words": 15,
+                    "top_k_accuracy": 0.5,
+                    "saved_keystrokes": 63,
+                    "saved_keystroke_ratio": 0.3620689655172414
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 30,
+                    "total_characters": 174,
+                    "top_k_correct_words": 17,
+                    "top_k_accuracy": 0.5666666666666667,
+                    "saved_keystrokes": 70,
+                    "saved_keystroke_ratio": 0.40229885057471265
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 30,
+                    "total_characters": 174,
+                    "top_k_correct_words": 18,
+                    "top_k_accuracy": 0.6,
+                    "saved_keystrokes": 82,
+                    "saved_keystroke_ratio": 0.47126436781609193
+                }
+            },
+            "deletion+insertion": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 64,
+                    "total_characters": 328,
+                    "top_k_correct_words": 53,
+                    "top_k_accuracy": 0.828125,
+                    "saved_keystrokes": 128,
+                    "saved_keystroke_ratio": 0.3902439024390244
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 64,
+                    "total_characters": 328,
+                    "top_k_correct_words": 57,
+                    "top_k_accuracy": 0.890625,
+                    "saved_keystrokes": 152,
+                    "saved_keystroke_ratio": 0.4634146341463415
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 64,
+                    "total_characters": 328,
+                    "top_k_correct_words": 59,
+                    "top_k_accuracy": 0.921875,
+                    "saved_keystrokes": 164,
+                    "saved_keystroke_ratio": 0.5
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 64,
+                    "total_characters": 328,
+                    "top_k_correct_words": 60,
+                    "top_k_accuracy": 0.9375,
+                    "saved_keystrokes": 177,
+                    "saved_keystroke_ratio": 0.5396341463414634
+                }
+            },
+            "deletion+substitution": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 66,
+                    "total_characters": 319,
+                    "top_k_correct_words": 41,
+                    "top_k_accuracy": 0.6212121212121212,
+                    "saved_keystrokes": 123,
+                    "saved_keystroke_ratio": 0.38557993730407525
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 66,
+                    "total_characters": 319,
+                    "top_k_correct_words": 48,
+                    "top_k_accuracy": 0.7272727272727273,
+                    "saved_keystrokes": 147,
+                    "saved_keystroke_ratio": 0.4608150470219436
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 66,
+                    "total_characters": 319,
+                    "top_k_correct_words": 53,
+                    "top_k_accuracy": 0.803030303030303,
+                    "saved_keystrokes": 168,
+                    "saved_keystroke_ratio": 0.5266457680250783
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 66,
+                    "total_characters": 319,
+                    "top_k_correct_words": 53,
+                    "top_k_accuracy": 0.803030303030303,
+                    "saved_keystrokes": 180,
+                    "saved_keystroke_ratio": 0.5642633228840125
+                }
+            },
+            "deletion+transposition": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 48,
+                    "total_characters": 274,
+                    "top_k_correct_words": 36,
+                    "top_k_accuracy": 0.75,
+                    "saved_keystrokes": 123,
+                    "saved_keystroke_ratio": 0.4489051094890511
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 48,
+                    "total_characters": 274,
+                    "top_k_correct_words": 42,
+                    "top_k_accuracy": 0.875,
+                    "saved_keystrokes": 144,
+                    "saved_keystroke_ratio": 0.5255474452554745
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 48,
+                    "total_characters": 274,
+                    "top_k_correct_words": 44,
+                    "top_k_accuracy": 0.9166666666666666,
+                    "saved_keystrokes": 159,
+                    "saved_keystroke_ratio": 0.5802919708029197
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 48,
+                    "total_characters": 274,
+                    "top_k_correct_words": 45,
+                    "top_k_accuracy": 0.9375,
+                    "saved_keystrokes": 163,
+                    "saved_keystroke_ratio": 0.5948905109489051
+                }
+            },
+            "insertion+deletion": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 41,
+                    "total_characters": 197,
+                    "top_k_correct_words": 33,
+                    "top_k_accuracy": 0.8048780487804879,
+                    "saved_keystrokes": 76,
+                    "saved_keystroke_ratio": 0.38578680203045684
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 41,
+                    "total_characters": 197,
+                    "top_k_correct_words": 34,
+                    "top_k_accuracy": 0.8292682926829268,
+                    "saved_keystrokes": 92,
+                    "saved_keystroke_ratio": 0.467005076142132
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 41,
+                    "total_characters": 197,
+                    "top_k_correct_words": 35,
+                    "top_k_accuracy": 0.8536585365853658,
+                    "saved_keystrokes": 99,
+                    "saved_keystroke_ratio": 0.5025380710659898
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 41,
+                    "total_characters": 197,
+                    "top_k_correct_words": 37,
+                    "top_k_accuracy": 0.9024390243902439,
+                    "saved_keystrokes": 107,
+                    "saved_keystroke_ratio": 0.5431472081218274
+                }
+            },
+            "insertion+insertion": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 96,
+                    "total_characters": 407,
+                    "top_k_correct_words": 93,
+                    "top_k_accuracy": 0.96875,
+                    "saved_keystrokes": 138,
+                    "saved_keystroke_ratio": 0.33906633906633904
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 96,
+                    "total_characters": 407,
+                    "top_k_correct_words": 94,
+                    "top_k_accuracy": 0.9791666666666666,
+                    "saved_keystrokes": 178,
+                    "saved_keystroke_ratio": 0.43734643734643736
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 96,
+                    "total_characters": 407,
+                    "top_k_correct_words": 96,
+                    "top_k_accuracy": 1.0,
+                    "saved_keystrokes": 202,
+                    "saved_keystroke_ratio": 0.4963144963144963
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 96,
+                    "total_characters": 407,
+                    "top_k_correct_words": 96,
+                    "top_k_accuracy": 1.0,
+                    "saved_keystrokes": 213,
+                    "saved_keystroke_ratio": 0.5233415233415234
+                }
+            },
+            "insertion+substitution": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 66,
+                    "total_characters": 291,
+                    "top_k_correct_words": 59,
+                    "top_k_accuracy": 0.8939393939393939,
+                    "saved_keystrokes": 82,
+                    "saved_keystroke_ratio": 0.281786941580756
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 66,
+                    "total_characters": 291,
+                    "top_k_correct_words": 63,
+                    "top_k_accuracy": 0.9545454545454546,
+                    "saved_keystrokes": 108,
+                    "saved_keystroke_ratio": 0.3711340206185567
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 66,
+                    "total_characters": 291,
+                    "top_k_correct_words": 65,
+                    "top_k_accuracy": 0.9848484848484849,
+                    "saved_keystrokes": 128,
+                    "saved_keystroke_ratio": 0.43986254295532645
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 66,
+                    "total_characters": 291,
+                    "top_k_correct_words": 65,
+                    "top_k_accuracy": 0.9848484848484849,
+                    "saved_keystrokes": 135,
+                    "saved_keystroke_ratio": 0.4639175257731959
+                }
+            },
+            "insertion+transposition": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 56,
+                    "total_characters": 253,
+                    "top_k_correct_words": 50,
+                    "top_k_accuracy": 0.8928571428571429,
+                    "saved_keystrokes": 98,
+                    "saved_keystroke_ratio": 0.38735177865612647
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 56,
+                    "total_characters": 253,
+                    "top_k_correct_words": 53,
+                    "top_k_accuracy": 0.9464285714285714,
+                    "saved_keystrokes": 120,
+                    "saved_keystroke_ratio": 0.4743083003952569
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 56,
+                    "total_characters": 253,
+                    "top_k_correct_words": 55,
+                    "top_k_accuracy": 0.9821428571428571,
+                    "saved_keystrokes": 130,
+                    "saved_keystroke_ratio": 0.5138339920948617
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 56,
+                    "total_characters": 253,
+                    "top_k_correct_words": 56,
+                    "top_k_accuracy": 1.0,
+                    "saved_keystrokes": 142,
+                    "saved_keystroke_ratio": 0.5612648221343873
+                }
+            },
+            "substitution+deletion": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 52,
+                    "total_characters": 267,
+                    "top_k_correct_words": 28,
+                    "top_k_accuracy": 0.5384615384615384,
+                    "saved_keystrokes": 85,
+                    "saved_keystroke_ratio": 0.31835205992509363
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 52,
+                    "total_characters": 267,
+                    "top_k_correct_words": 33,
+                    "top_k_accuracy": 0.6346153846153846,
+                    "saved_keystrokes": 110,
+                    "saved_keystroke_ratio": 0.41198501872659177
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 52,
+                    "total_characters": 267,
+                    "top_k_correct_words": 36,
+                    "top_k_accuracy": 0.6923076923076923,
+                    "saved_keystrokes": 121,
+                    "saved_keystroke_ratio": 0.45318352059925093
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 52,
+                    "total_characters": 267,
+                    "top_k_correct_words": 39,
+                    "top_k_accuracy": 0.75,
+                    "saved_keystrokes": 134,
+                    "saved_keystroke_ratio": 0.50187265917603
+                }
+            },
+            "substitution+insertion": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 73,
+                    "total_characters": 348,
+                    "top_k_correct_words": 67,
+                    "top_k_accuracy": 0.9178082191780822,
+                    "saved_keystrokes": 105,
+                    "saved_keystroke_ratio": 0.3017241379310345
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 73,
+                    "total_characters": 348,
+                    "top_k_correct_words": 72,
+                    "top_k_accuracy": 0.9863013698630136,
+                    "saved_keystrokes": 138,
+                    "saved_keystroke_ratio": 0.39655172413793105
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 73,
+                    "total_characters": 348,
+                    "top_k_correct_words": 73,
+                    "top_k_accuracy": 1.0,
+                    "saved_keystrokes": 156,
+                    "saved_keystroke_ratio": 0.4482758620689655
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 73,
+                    "total_characters": 348,
+                    "top_k_correct_words": 73,
+                    "top_k_accuracy": 1.0,
+                    "saved_keystrokes": 167,
+                    "saved_keystroke_ratio": 0.47988505747126436
+                }
+            },
+            "substitution+substitution": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 59,
+                    "total_characters": 273,
+                    "top_k_correct_words": 45,
+                    "top_k_accuracy": 0.7627118644067796,
+                    "saved_keystrokes": 103,
+                    "saved_keystroke_ratio": 0.3772893772893773
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 59,
+                    "total_characters": 273,
+                    "top_k_correct_words": 52,
+                    "top_k_accuracy": 0.8813559322033898,
+                    "saved_keystrokes": 130,
+                    "saved_keystroke_ratio": 0.47619047619047616
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 59,
+                    "total_characters": 273,
+                    "top_k_correct_words": 52,
+                    "top_k_accuracy": 0.8813559322033898,
+                    "saved_keystrokes": 142,
+                    "saved_keystroke_ratio": 0.5201465201465202
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 59,
+                    "total_characters": 273,
+                    "top_k_correct_words": 53,
+                    "top_k_accuracy": 0.8983050847457628,
+                    "saved_keystrokes": 148,
+                    "saved_keystroke_ratio": 0.5421245421245421
+                }
+            },
+            "substitution+transposition": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 78,
+                    "total_characters": 345,
+                    "top_k_correct_words": 54,
+                    "top_k_accuracy": 0.6923076923076923,
+                    "saved_keystrokes": 103,
+                    "saved_keystroke_ratio": 0.2985507246376812
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 78,
+                    "total_characters": 345,
+                    "top_k_correct_words": 65,
+                    "top_k_accuracy": 0.8333333333333334,
+                    "saved_keystrokes": 140,
+                    "saved_keystroke_ratio": 0.4057971014492754
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 78,
+                    "total_characters": 345,
+                    "top_k_correct_words": 70,
+                    "top_k_accuracy": 0.8974358974358975,
+                    "saved_keystrokes": 156,
+                    "saved_keystroke_ratio": 0.45217391304347826
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 78,
+                    "total_characters": 345,
+                    "top_k_correct_words": 71,
+                    "top_k_accuracy": 0.9102564102564102,
+                    "saved_keystrokes": 171,
+                    "saved_keystroke_ratio": 0.4956521739130435
+                }
+            },
+            "transposition+deletion": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 42,
+                    "total_characters": 226,
+                    "top_k_correct_words": 32,
+                    "top_k_accuracy": 0.7619047619047619,
+                    "saved_keystrokes": 91,
+                    "saved_keystroke_ratio": 0.4026548672566372
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 42,
+                    "total_characters": 226,
+                    "top_k_correct_words": 32,
+                    "top_k_accuracy": 0.7619047619047619,
+                    "saved_keystrokes": 103,
+                    "saved_keystroke_ratio": 0.4557522123893805
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 42,
+                    "total_characters": 226,
+                    "top_k_correct_words": 33,
+                    "top_k_accuracy": 0.7857142857142857,
+                    "saved_keystrokes": 116,
+                    "saved_keystroke_ratio": 0.5132743362831859
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 42,
+                    "total_characters": 226,
+                    "top_k_correct_words": 34,
+                    "top_k_accuracy": 0.8095238095238095,
+                    "saved_keystrokes": 121,
+                    "saved_keystroke_ratio": 0.5353982300884956
+                }
+            },
+            "transposition+insertion": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 66,
+                    "total_characters": 307,
+                    "top_k_correct_words": 62,
+                    "top_k_accuracy": 0.9393939393939394,
+                    "saved_keystrokes": 99,
+                    "saved_keystroke_ratio": 0.32247557003257327
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 66,
+                    "total_characters": 307,
+                    "top_k_correct_words": 62,
+                    "top_k_accuracy": 0.9393939393939394,
+                    "saved_keystrokes": 132,
+                    "saved_keystroke_ratio": 0.42996742671009774
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 66,
+                    "total_characters": 307,
+                    "top_k_correct_words": 64,
+                    "top_k_accuracy": 0.9696969696969697,
+                    "saved_keystrokes": 156,
+                    "saved_keystroke_ratio": 0.50814332247557
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 66,
+                    "total_characters": 307,
+                    "top_k_correct_words": 65,
+                    "top_k_accuracy": 0.9848484848484849,
+                    "saved_keystrokes": 164,
+                    "saved_keystroke_ratio": 0.5342019543973942
+                }
+            },
+            "transposition+substitution": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 100,
+                    "total_characters": 437,
+                    "top_k_correct_words": 67,
+                    "top_k_accuracy": 0.67,
+                    "saved_keystrokes": 148,
+                    "saved_keystroke_ratio": 0.33867276887871856
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 100,
+                    "total_characters": 437,
+                    "top_k_correct_words": 80,
+                    "top_k_accuracy": 0.8,
+                    "saved_keystrokes": 196,
+                    "saved_keystroke_ratio": 0.448512585812357
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 100,
+                    "total_characters": 437,
+                    "top_k_correct_words": 83,
+                    "top_k_accuracy": 0.83,
+                    "saved_keystrokes": 216,
+                    "saved_keystroke_ratio": 0.494279176201373
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 100,
+                    "total_characters": 437,
+                    "top_k_correct_words": 86,
+                    "top_k_accuracy": 0.86,
+                    "saved_keystrokes": 223,
+                    "saved_keystroke_ratio": 0.5102974828375286
+                }
+            },
+            "transposition+transposition": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 62,
+                    "total_characters": 320,
+                    "top_k_correct_words": 53,
+                    "top_k_accuracy": 0.8548387096774194,
+                    "saved_keystrokes": 128,
+                    "saved_keystroke_ratio": 0.4
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 62,
+                    "total_characters": 320,
+                    "top_k_correct_words": 55,
+                    "top_k_accuracy": 0.8870967741935484,
+                    "saved_keystrokes": 149,
+                    "saved_keystroke_ratio": 0.465625
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 62,
+                    "total_characters": 320,
+                    "top_k_correct_words": 56,
+                    "top_k_accuracy": 0.9032258064516129,
+                    "saved_keystrokes": 159,
+                    "saved_keystroke_ratio": 0.496875
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 62,
+                    "total_characters": 320,
+                    "top_k_correct_words": 57,
+                    "top_k_accuracy": 0.9193548387096774,
+                    "saved_keystrokes": 170,
+                    "saved_keystroke_ratio": 0.53125
+                }
+            }
+        },
+        "by_edit_operation": {
+            "deletion": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 343,
+                    "total_characters": 1785,
+                    "top_k_correct_words": 234,
+                    "top_k_accuracy": 0.6822157434402333,
+                    "saved_keystrokes": 669,
+                    "saved_keystroke_ratio": 0.37478991596638656
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 343,
+                    "total_characters": 1785,
+                    "top_k_correct_words": 261,
+                    "top_k_accuracy": 0.760932944606414,
+                    "saved_keystrokes": 811,
+                    "saved_keystroke_ratio": 0.45434173669467787
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 343,
+                    "total_characters": 1785,
+                    "top_k_correct_words": 277,
+                    "top_k_accuracy": 0.8075801749271136,
+                    "saved_keystrokes": 897,
+                    "saved_keystroke_ratio": 0.5025210084033613
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 343,
+                    "total_characters": 1785,
+                    "top_k_correct_words": 286,
+                    "top_k_accuracy": 0.8338192419825073,
+                    "saved_keystrokes": 964,
+                    "saved_keystroke_ratio": 0.5400560224089636
+                }
+            },
+            "insertion": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 462,
+                    "total_characters": 2131,
+                    "top_k_correct_words": 417,
+                    "top_k_accuracy": 0.9025974025974026,
+                    "saved_keystrokes": 726,
+                    "saved_keystroke_ratio": 0.340685124354763
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 462,
+                    "total_characters": 2131,
+                    "top_k_correct_words": 435,
+                    "top_k_accuracy": 0.9415584415584416,
+                    "saved_keystrokes": 920,
+                    "saved_keystroke_ratio": 0.43172219615204127
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 462,
+                    "total_characters": 2131,
+                    "top_k_correct_words": 447,
+                    "top_k_accuracy": 0.9675324675324676,
+                    "saved_keystrokes": 1035,
+                    "saved_keystroke_ratio": 0.48568747067104645
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 462,
+                    "total_characters": 2131,
+                    "top_k_correct_words": 452,
+                    "top_k_accuracy": 0.9783549783549783,
+                    "saved_keystrokes": 1105,
+                    "saved_keystroke_ratio": 0.5185358986391365
+                }
+            },
+            "substitution": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 494,
+                    "total_characters": 2280,
+                    "top_k_correct_words": 361,
+                    "top_k_accuracy": 0.7307692307692307,
+                    "saved_keystrokes": 749,
+                    "saved_keystroke_ratio": 0.3285087719298246
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 494,
+                    "total_characters": 2280,
+                    "top_k_correct_words": 413,
+                    "top_k_accuracy": 0.8360323886639676,
+                    "saved_keystrokes": 969,
+                    "saved_keystroke_ratio": 0.425
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 494,
+                    "total_characters": 2280,
+                    "top_k_correct_words": 432,
+                    "top_k_accuracy": 0.8744939271255061,
+                    "saved_keystrokes": 1087,
+                    "saved_keystroke_ratio": 0.47675438596491226
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 494,
+                    "total_characters": 2280,
+                    "top_k_correct_words": 440,
+                    "top_k_accuracy": 0.8906882591093117,
+                    "saved_keystrokes": 1158,
+                    "saved_keystroke_ratio": 0.5078947368421053
+                }
+            },
+            "transposition": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 452,
+                    "total_characters": 2162,
+                    "top_k_correct_words": 354,
+                    "top_k_accuracy": 0.7831858407079646,
+                    "saved_keystrokes": 790,
+                    "saved_keystroke_ratio": 0.3654024051803885
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 452,
+                    "total_characters": 2162,
+                    "top_k_correct_words": 389,
+                    "top_k_accuracy": 0.8606194690265486,
+                    "saved_keystrokes": 984,
+                    "saved_keystroke_ratio": 0.4551341350601295
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 452,
+                    "total_characters": 2162,
+                    "top_k_correct_words": 405,
+                    "top_k_accuracy": 0.8960176991150443,
+                    "saved_keystrokes": 1092,
+                    "saved_keystroke_ratio": 0.5050878815911193
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 452,
+                    "total_characters": 2162,
+                    "top_k_correct_words": 414,
+                    "top_k_accuracy": 0.915929203539823,
+                    "saved_keystrokes": 1154,
+                    "saved_keystroke_ratio": 0.5337650323774283
+                }
+            }
+        },
+        "by_context_bin": {
+            "1-2": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 77,
+                    "total_characters": 388,
+                    "top_k_correct_words": 59,
+                    "top_k_accuracy": 0.7662337662337663,
+                    "saved_keystrokes": 113,
+                    "saved_keystroke_ratio": 0.2912371134020619
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 77,
+                    "total_characters": 388,
+                    "top_k_correct_words": 64,
+                    "top_k_accuracy": 0.8311688311688312,
+                    "saved_keystrokes": 146,
+                    "saved_keystroke_ratio": 0.37628865979381443
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 77,
+                    "total_characters": 388,
+                    "top_k_correct_words": 68,
+                    "top_k_accuracy": 0.8831168831168831,
+                    "saved_keystrokes": 175,
+                    "saved_keystroke_ratio": 0.45103092783505155
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 77,
+                    "total_characters": 388,
+                    "top_k_correct_words": 68,
+                    "top_k_accuracy": 0.8831168831168831,
+                    "saved_keystrokes": 186,
+                    "saved_keystroke_ratio": 0.4793814432989691
+                }
+            },
+            "11-20": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 243,
+                    "total_characters": 1151,
+                    "top_k_correct_words": 195,
+                    "top_k_accuracy": 0.8024691358024691,
+                    "saved_keystrokes": 435,
+                    "saved_keystroke_ratio": 0.3779322328410078
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 243,
+                    "total_characters": 1151,
+                    "top_k_correct_words": 210,
+                    "top_k_accuracy": 0.8641975308641975,
+                    "saved_keystrokes": 549,
+                    "saved_keystroke_ratio": 0.4769765421372719
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 243,
+                    "total_characters": 1151,
+                    "top_k_correct_words": 221,
+                    "top_k_accuracy": 0.9094650205761317,
+                    "saved_keystrokes": 614,
+                    "saved_keystroke_ratio": 0.5334491746307559
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 243,
+                    "total_characters": 1151,
+                    "top_k_correct_words": 226,
+                    "top_k_accuracy": 0.9300411522633745,
+                    "saved_keystrokes": 649,
+                    "saved_keystroke_ratio": 0.5638575152041703
+                }
+            },
+            "21-50": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 13,
+                    "total_characters": 62,
+                    "top_k_correct_words": 12,
+                    "top_k_accuracy": 0.9230769230769231,
+                    "saved_keystrokes": 28,
+                    "saved_keystroke_ratio": 0.45161290322580644
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 13,
+                    "total_characters": 62,
+                    "top_k_correct_words": 12,
+                    "top_k_accuracy": 0.9230769230769231,
+                    "saved_keystrokes": 31,
+                    "saved_keystroke_ratio": 0.5
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 13,
+                    "total_characters": 62,
+                    "top_k_correct_words": 12,
+                    "top_k_accuracy": 0.9230769230769231,
+                    "saved_keystrokes": 33,
+                    "saved_keystroke_ratio": 0.532258064516129
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 13,
+                    "total_characters": 62,
+                    "top_k_correct_words": 12,
+                    "top_k_accuracy": 0.9230769230769231,
+                    "saved_keystrokes": 33,
+                    "saved_keystroke_ratio": 0.532258064516129
+                }
+            },
+            "3-5": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 227,
+                    "total_characters": 1067,
+                    "top_k_correct_words": 169,
+                    "top_k_accuracy": 0.7444933920704846,
+                    "saved_keystrokes": 360,
+                    "saved_keystroke_ratio": 0.3373945641986879
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 227,
+                    "total_characters": 1067,
+                    "top_k_correct_words": 192,
+                    "top_k_accuracy": 0.8458149779735683,
+                    "saved_keystrokes": 454,
+                    "saved_keystroke_ratio": 0.42549203373945643
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 227,
+                    "total_characters": 1067,
+                    "top_k_correct_words": 200,
+                    "top_k_accuracy": 0.8810572687224669,
+                    "saved_keystrokes": 494,
+                    "saved_keystroke_ratio": 0.4629803186504217
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 227,
+                    "total_characters": 1067,
+                    "top_k_correct_words": 206,
+                    "top_k_accuracy": 0.9074889867841409,
+                    "saved_keystrokes": 527,
+                    "saved_keystroke_ratio": 0.4939081537019681
+                }
+            },
+            "6-10": {
+                "1": {
+                    "top_k": 1,
+                    "total_examples": 439,
+                    "total_characters": 2098,
+                    "top_k_correct_words": 349,
+                    "top_k_accuracy": 0.7949886104783599,
+                    "saved_keystrokes": 737,
+                    "saved_keystroke_ratio": 0.3512869399428027
+                },
+                "2": {
+                    "top_k": 2,
+                    "total_examples": 439,
+                    "total_characters": 2098,
+                    "top_k_correct_words": 379,
+                    "top_k_accuracy": 0.8633257403189066,
+                    "saved_keystrokes": 922,
+                    "saved_keystroke_ratio": 0.43946615824594853
+                },
+                "3": {
+                    "top_k": 3,
+                    "total_examples": 439,
+                    "total_characters": 2098,
+                    "top_k_correct_words": 390,
+                    "top_k_accuracy": 0.8883826879271071,
+                    "saved_keystrokes": 1026,
+                    "saved_keystroke_ratio": 0.4890371782650143
+                },
+                "4": {
+                    "top_k": 4,
+                    "total_examples": 439,
+                    "total_characters": 2098,
+                    "top_k_correct_words": 396,
+                    "top_k_accuracy": 0.9020501138952164,
+                    "saved_keystrokes": 1102,
+                    "saved_keystroke_ratio": 0.5252621544327931
+                }
+            }
+        }
+    },
+    "context_length_counts": {
+        "1": 27,
+        "2": 50,
+        "3": 58,
+        "4": 87,
+        "5": 82,
+        "6": 94,
+        "7": 98,
+        "8": 90,
+        "9": 75,
+        "10": 82,
+        "11": 77,
+        "12": 29,
+        "13": 42,
+        "14": 31,
+        "15": 17,
+        "16": 16,
+        "17": 13,
+        "18": 5,
+        "19": 11,
+        "20": 2,
+        "21": 6,
+        "22": 5,
+        "23": 1,
+        "24": 1
+    },
+    "configuration": {
+        "model": "ngram",
+        "ngram_model_path": "/Users/hej/NLP-project/models/ngram/Tiny_stories_ngram_model.pkl",
+        "lambda_source": "/Users/hej/NLP-project/results/metrics/best_ngram_lambdas.json",
+        "lambdas": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.1,
+            "4": 0.9
+        },
+        "spell_data_path": "/Users/hej/NLP-project/scr/data/spell_eval/tinystories/test_edit2.jsonl",
+        "max_edit_dist": 2,
+        "weight_mode": "operation",
+        "lambda_edit": 0.5,
+        "mu_freq": 0.1,
+        "top_k_values": [
+            1,
+            2,
+            3,
+            4
+        ],
+        "main_top_k_for_breakdown_plots": 3,
+        "max_examples": 0,
+        "start_chars_typed": 1
+    }
+}

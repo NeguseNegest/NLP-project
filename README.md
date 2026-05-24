@@ -229,7 +229,7 @@ By default, spell correction doesn't use any language model — it just looks at
 
 **N-gram** — uses the n-gram language model to score candidates based on the words that came before. For example, after typing `"the quick brown"`, it knows `"fox"` is more likely than `"fax"` even if both are equally close to what you typed.
 
-**Transformer** — uses the trained transformer model for the same purpose, but with a much richer understanding of context. It considers the whole sentence, not just the last few words. Generally gives the best suggestions, but is slower.
+**Transformer** — uses the trained transformer model for the same purpose, but with a much richer context representation. It can consider more of the sentence than the n-gram model, but it is slower and does not always rank spelling-correction candidates better.
 
 When you pick N-gram or Transformer as the language model for spell correction, it takes over the model selection for that session — the prediction panel and the spell correction panel both use the same underlying model.
 
@@ -245,3 +245,339 @@ When you pick N-gram or Transformer as the language model for spell correction, 
 | No model | Score by edit distance + frequency only |
 | N-gram | Add sentence context via n-gram model |
 | Transformer | Add sentence context via transformer model |
+
+---
+
+## Spell Correction Evaluation
+
+### What we evaluated
+
+The spell-correction task is slightly different from normal word prediction.
+
+In normal word prediction, the user types the beginning of a correctly spelled word, such as:
+
+```text
+he was walking on the str...
+```
+
+and the system should suggest:
+
+```text
+street
+```
+
+In spell correction, the user may type the word incorrectly:
+
+```text
+he was walking on the stret
+```
+
+and the system should still suggest:
+
+```text
+street
+```
+
+So the question is: **can the system still suggest the correct word when the typed prefix contains spelling mistakes?**
+
+This is best described as **spell-aware word prediction**. The system updates suggestions while the user types, but the typed word may be misspelled.
+
+### How the corrupted test data was created
+
+For this evaluation, fixed corrupted test sets were created from the N-gram test files:
+
+```text
+scr/data/tiny_stories/tinystories_test.txt
+scr/data/wikitext_2/wikitext2_test.txt
+```
+
+Each test example was made as follows:
+
+1. Randomly choose a sentence from the test data.
+2. Keep only sentences with at least two words.
+3. Use all words except the last word as the context.
+4. Use the last word as the correct target word.
+5. Corrupt only the last word.
+6. Store the context, the corrupted word, the correct word, and the edit operation.
+
+For example:
+
+```json
+{
+  "context": ["he", "was", "walking", "on", "the"],
+  "corrupted": "stret",
+  "target": "street",
+  "edit_type": "deletion",
+  "display_sentence": "he was walking on the stret <street>"
+}
+```
+
+Two corrupted test files were created for each dataset:
+
+| File | Meaning |
+|---|---|
+| `test_edit1.jsonl` | The final word has exactly 1 edit |
+| `test_edit2.jsonl` | The final word has exactly 2 edits |
+
+The corrupted word had to satisfy the following conditions:
+
+- the sentence has at least two words
+- the sentence contains only alphabetic word tokens after basic cleaning
+- the target word is the final word in the sentence
+- the target word is longer than one character
+- the corrupted word is different from the target
+- the corrupted word is longer than one character
+- the corrupted word has exactly the requested edit distance
+- the corrupted word is not already a normal word in the corpus vocabulary
+
+This last point avoids confusing examples where a typo accidentally becomes another real word.
+
+### How S1, S2, and S3 were evaluated
+
+The same corrupted files were used for both the N-gram model and the Transformer model. This makes the comparison fair.
+
+| Strategy | Test file | Edit-distance setting |
+|---|---|---|
+| S1 | `test_edit1.jsonl` | Standard edit distance, maximum distance 1 |
+| S2 | `test_edit2.jsonl` | Standard edit distance, maximum distance 2 |
+| S3 | `test_edit2.jsonl` | Weighted edit distance, maximum distance 2 |
+
+S3 uses the same two-edit examples as S2. The difference is that S3 gives a lower cost to transpositions, because swapped neighbouring letters are common typing mistakes.
+
+### How simulated typing was used
+
+The evaluation simulates a user typing the corrupted word one character at a time.
+
+For example, if the correct word is:
+
+```text
+walking
+```
+
+and the corrupted word is:
+
+```text
+wakiln
+```
+
+the evaluator checks suggestions after:
+
+```text
+w
+wa
+wak
+waki
+wakil
+wakiln
+```
+
+The full corrupted word is included. If the correct word appears only after the full corrupted word has been typed, it still counts as a successful correction, but it may save few or no keystrokes.
+
+The two main metrics are:
+
+| Metric | Meaning |
+|---|---|
+| Top-k accuracy | How often the correct word appears in the top `k` suggestions |
+| Saved-keystroke ratio | How much typing was saved by suggesting the correct word early |
+
+For example, top-3 accuracy means:
+
+```text
+Was the correct word one of the three suggestions?
+```
+
+Saved-keystroke ratio means:
+
+```text
+Out of all characters the user intended to type, what fraction did the system save?
+```
+
+Examples where the correct target word was not in the model vocabulary were skipped, because the model could not possibly suggest them. This is why WikiText-2 has more skipped examples than TinyStories.
+
+### Scoring setup
+
+Both models used the same spell-correction scoring formula:
+
+```text
+score(candidate) =
+    log P(candidate | context)
+    - λ_edit · normalized_edit_distance
+    + μ_freq · normalized_word_frequency
+```
+
+The final test results below used:
+
+```text
+λ_edit = 0.5
+μ_freq = 0.1
+```
+
+The N-gram model used the previously tuned N-gram interpolation weights. The Transformer model used its trained checkpoint and tokenizer. The spell-correction examples were the same for both models.
+
+---
+
+## Spell Correction Results
+
+The following tables show both **top-k accuracy** and **saved-keystroke ratio** for `top_k = 1, 2, 3, 4`.
+
+In the tables:
+
+```text
+Acc   = top-k accuracy
+Saved = saved-keystroke ratio
+Eval/OOV = evaluated examples / skipped out-of-vocabulary examples
+```
+
+### TinyStories
+
+| Strategy | Model | Eval/OOV | Top-1 Acc | Top-1 Saved | Top-2 Acc | Top-2 Saved | Top-3 Acc | Top-3 Saved | Top-4 Acc | Top-4 Saved |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| S1 | N-gram | 999/1 | 90.09% | 46.12% | 94.69% | 54.47% | 96.40% | 58.41% | 97.10% | 60.95% |
+| S1 | Transformer | 999/1 | 86.69% | 43.96% | 91.19% | 51.91% | 93.39% | 55.43% | 94.69% | 57.66% |
+| S2 | N-gram | 999/1 | 77.88% | 35.00% | 85.39% | 44.10% | 88.79% | 49.16% | 90.59% | 52.31% |
+| S2 | Transformer | 999/1 | 74.67% | 35.50% | 81.38% | 43.14% | 84.58% | 47.04% | 85.99% | 49.41% |
+| S3 | N-gram | 999/1 | 78.48% | 35.10% | 85.79% | 44.10% | 89.19% | 49.14% | 90.89% | 52.39% |
+| S3 | Transformer | 999/1 | 74.87% | 35.56% | 81.38% | 43.20% | 84.78% | 47.10% | 86.09% | 49.45% |
+
+### WikiText-2
+
+| Strategy | Model | Eval/OOV | Top-1 Acc | Top-1 Saved | Top-2 Acc | Top-2 Saved | Top-3 Acc | Top-3 Saved | Top-4 Acc | Top-4 Saved |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| S1 | N-gram | 902/98 | 73.28% | 26.03% | 81.71% | 34.92% | 84.70% | 39.41% | 85.59% | 41.72% |
+| S1 | Transformer | 902/98 | 69.51% | 17.68% | 78.49% | 25.89% | 80.71% | 29.98% | 82.15% | 32.45% |
+| S2 | N-gram | 902/98 | 55.99% | 17.29% | 65.63% | 24.10% | 71.06% | 27.80% | 72.95% | 29.70% |
+| S2 | Transformer | 902/98 | 53.10% | 11.53% | 62.20% | 17.55% | 66.41% | 20.65% | 69.40% | 23.09% |
+| S3 | N-gram | 902/98 | 57.32% | 17.61% | 66.08% | 24.46% | 70.84% | 27.87% | 72.39% | 29.89% |
+| S3 | Transformer | 902/98 | 53.10% | 11.50% | 62.42% | 17.59% | 66.30% | 20.65% | 69.07% | 23.00% |
+
+### Relevant plots
+
+These plots show the top-3 strategy comparison for each model and dataset.
+
+![N-gram TinyStories spell correction](results/plots/ngram_spell/ngram_spell_tinystories_top3_strategy_comparison.png)
+
+![Transformer TinyStories spell correction](results/plots/transformer_spell_plots/transformer_spell_tinystories_top3_strategy_comparison.png)
+
+![N-gram WikiText-2 spell correction](results/plots/ngram_spell/ngram_spell_wikitext2_top3_strategy_comparison.png)
+
+![Transformer WikiText-2 spell correction](results/plots/transformer_spell_plots/transformer_spell_wikitext2_top3_strategy_comparison.png)
+
+More detailed plots are saved under:
+
+```text
+results/plots/ngram_spell/
+results/plots/transformer_spell_plots/
+```
+
+These include plots by edit operation and by the number of words before the corrupted word.
+
+---
+
+## Discussion of Spell Correction Results
+
+### S1 is easier than S2 and S3
+
+S1 has only one spelling mistake, so it is the easiest setting. Both models perform best on S1.
+
+For example, on TinyStories with top-3 suggestions:
+
+| Model | S1 top-3 accuracy | S2 top-3 accuracy |
+|---|---:|---:|
+| N-gram | 96.40% | 88.79% |
+| Transformer | 93.39% | 84.58% |
+
+This is expected. With two mistakes, the corrupted prefix can be much farther from the correct word. More wrong candidates become possible, so ranking the correct word becomes harder.
+
+### TinyStories is easier than WikiText-2
+
+Both models perform better on TinyStories than on WikiText-2.
+
+TinyStories has simpler sentences and more repeated patterns. WikiText-2 has more varied vocabulary, names, rare words, and longer contexts. This makes WikiText-2 harder for spelling correction.
+
+The number of skipped examples also shows this:
+
+| Dataset | Loaded examples | Evaluated examples | Skipped OOV |
+|---|---:|---:|---:|
+| TinyStories | 1,000 | 999 | 1 |
+| WikiText-2 | 1,000 | 902 | 98 |
+
+WikiText-2 has many more target words that were outside the model vocabulary, so those examples had to be skipped.
+
+### N-gram performed better than Transformer for spell correction
+
+For spell correction, the N-gram model performed better than the Transformer on both datasets.
+
+At top-3:
+
+| Dataset | Strategy | N-gram accuracy | Transformer accuracy | N-gram saved | Transformer saved |
+|---|---|---:|---:|---:|---:|
+| TinyStories | S1 | 96.40% | 93.39% | 58.41% | 55.43% |
+| TinyStories | S2 | 88.79% | 84.58% | 49.16% | 47.04% |
+| TinyStories | S3 | 89.19% | 84.78% | 49.14% | 47.10% |
+| WikiText-2 | S1 | 84.70% | 80.71% | 39.41% | 29.98% |
+| WikiText-2 | S2 | 71.06% | 66.41% | 27.80% | 20.65% |
+| WikiText-2 | S3 | 70.84% | 66.30% | 27.87% | 20.65% |
+
+This may seem surprising because Transformers are usually stronger language models. However, this spell-correction setup is very word-based:
+
+1. First, the system finds candidate words close to the typed misspelling.
+2. Then it ranks those whole-word candidates.
+3. The N-gram model scores whole words directly.
+4. The Transformer uses subword tokens, so scoring a full candidate word can be less direct.
+
+In other words, clean word prediction mainly tests language modeling. Spell correction tests a combination of edit distance, word frequency, candidate generation, and language-model scoring. The N-gram model is simple, but it fits this word-level candidate-ranking pipeline very well.
+
+### S3 only changed the results slightly
+
+S3 uses weighted edit distance, where transpositions are cheaper than other edits. Overall, S3 was very close to S2.
+
+For example, on WikiText-2 with the N-gram model:
+
+| Strategy | Top-3 accuracy | Top-3 saved ratio |
+|---|---:|---:|
+| S2 | 71.06% | 27.80% |
+| S3 | 70.84% | 27.87% |
+
+This means weighted edit distance did not dramatically change the overall result. It may still help for specific typo types such as transpositions, but the full test set contains many different edit combinations, so the total average stays close to S2.
+
+### Top-k tradeoff
+
+Showing more suggestions improves both accuracy and saved keystrokes. For example, on TinyStories S2 with the N-gram model:
+
+| Top-k | Accuracy | Saved ratio |
+|---:|---:|---:|
+| 1 | 77.88% | 35.00% |
+| 2 | 85.39% | 44.10% |
+| 3 | 88.79% | 49.16% |
+| 4 | 90.59% | 52.31% |
+
+Top-4 gives the best score, but top-3 is still a reasonable practical choice because it gives strong performance without showing too many suggestions.
+
+---
+
+## Spell-Parameter Validation Note
+
+After the final spell-correction evaluation, a small validation experiment was run on 100 corrupted validation examples. This validation searched over:
+
+```text
+λ_edit ∈ {0.0, 0.25, 0.5, 0.75, 1.0}
+μ_freq ∈ {0.0, 0.05, 0.1, 0.2}
+```
+
+The objective was top-3 saved-keystroke ratio.
+
+The best validation settings were:
+
+| Dataset | Strategy used for validation | Best λ_edit | Best μ_freq | Top-3 validation accuracy | Top-3 validation saved ratio |
+|---|---|---:|---:|---:|---:|
+| TinyStories | S3 | 1.0 | 0.05 | 90.00% | 51.95% |
+| WikiText-2 | S3 | 1.0 | 0.20 | 71.88% | 27.30% |
+
+These validation results were **not used to rerun the final test evaluation shown above**. The final tables still use:
+
+```text
+λ_edit = 0.5
+μ_freq = 0.1
+```
+
+The validation result suggests that a stronger edit-distance penalty may improve the spell corrector. Future experiments could rerun the final test results using the validated values, possibly with dataset-specific frequency weights.

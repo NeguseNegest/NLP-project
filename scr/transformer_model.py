@@ -8,6 +8,32 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
+
+def resolve_torch_device(device="auto"):
+    """Resolve the requested device safely.
+
+    - "auto" chooses CUDA if available, then Apple MPS, then CPU.
+    - "cuda" falls back to CPU if CUDA is unavailable instead of crashing.
+    """
+    if device is None or str(device).lower() == "auto":
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return torch.device("mps")
+        return torch.device("cpu")
+
+    requested = torch.device(device)
+
+    if requested.type == "cuda" and not torch.cuda.is_available():
+        print("CUDA was requested, but CUDA is not available. Falling back to CPU.")
+        return torch.device("cpu")
+
+    if requested.type == "mps" and not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
+        print("MPS was requested, but MPS is not available. Falling back to CPU.")
+        return torch.device("cpu")
+
+    return requested
+
 TRANSFORMER_DIR = Path(__file__).resolve().parent / "transformer"
 sys.path.insert(0, str(TRANSFORMER_DIR))
 
@@ -76,22 +102,25 @@ class TinyStoriesLM(nn.Module):
         return self.final(h)
 
     @classmethod
-    def load(cls, checkpoint_path, device="cpu"):
+    def load(cls, checkpoint_path, device="auto"):
+        device = resolve_torch_device(device)
         checkpoint = torch.load(checkpoint_path, map_location=device)
         config = Config(**checkpoint["config"])
         model = cls(config)
         model.load_state_dict(checkpoint["model_state_dict"])
         model.to(device)
+        model.eval()
         print(f"Model loaded from {checkpoint_path} "
-              f"(epoch {checkpoint['epoch']}, iter {checkpoint['iteration']})")
+              f"(epoch {checkpoint['epoch']}, iter {checkpoint['iteration']}) "
+              f"on device {device}")
         return model
 
 
 class TransformerPredictor:
-    def __init__(self, checkpoint_path, tokenizer_path, device="cpu"):
-        self.device = device
+    def __init__(self, checkpoint_path, tokenizer_path, device="auto"):
+        self.device = resolve_torch_device(device)
         self.tokenizer = TinyStoriesTokenizer.load(tokenizer_path)
-        self.model = TinyStoriesLM.load(checkpoint_path, device=device)
+        self.model = TinyStoriesLM.load(checkpoint_path, device=self.device)
         self.model.eval()
 
         self.word_vocab = []
@@ -206,9 +235,9 @@ class TransformerPredictor:
         if single_indices:
             if cache_key != self._logits_cache_key:
                 x = torch.tensor(context_ids, dtype=torch.long, device=self.device).unsqueeze(0)
-                with torch.no_grad():
+                with torch.inference_mode():
                     logits = self.model(x)
-                self._logits_cache_probs = torch.softmax(logits[0, -1, :], dim=-1).cpu()
+                self._logits_cache_probs = torch.softmax(logits[0, -1, :], dim=-1).detach().cpu()
                 self._logits_cache_key = cache_key
             probs = self._logits_cache_probs
             vocab_size = len(probs)
@@ -231,9 +260,9 @@ class TransformerPredictor:
                     batch.append(inp[:target_len])
 
                 x = torch.tensor(batch, dtype=torch.long, device=self.device)
-                with torch.no_grad():
+                with torch.inference_mode():
                     logits = self.model(x)
-                log_p = torch.log_softmax(logits, dim=-1).cpu()
+                log_p = torch.log_softmax(logits, dim=-1).detach().cpu()
 
                 for k, (orig_i, toks) in enumerate(zip(chunk_idx, chunk_toks)):
                     score = 0.0

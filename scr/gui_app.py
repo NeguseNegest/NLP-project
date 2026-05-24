@@ -4,7 +4,22 @@ from functools import lru_cache
 from time import perf_counter
 import heapq
 
+import torch
+
 from flask import Flask, jsonify, request, render_template_string
+
+
+def pick_torch_device():
+    """Prefer CUDA on Colab, then Apple MPS locally, then CPU."""
+    if torch.cuda.is_available():
+        return "cuda"
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+DEVICE = pick_torch_device()
+print(f"Using torch device: {DEVICE}")
 
 CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent if CURRENT_DIR.name == "scr" else CURRENT_DIR
@@ -31,7 +46,7 @@ BEST_LAMBDAS = {1: 0.0, 2: 0.0, 3: 0.1, 4: 0.9}
 
 _NGRAM_PATHS = {
     "tinystories": PROJECT_ROOT / "models" / "ngram" / "Tiny_stories_ngram_model.pkl",
-    "wikitext2":   PROJECT_ROOT / "models" / "ngram" / "wikitext2_ngram_model.pkl",
+    "wikitext2":   PROJECT_ROOT / "models" / "ngram" / "Wikitext2_ngram_model.pkl",
 }
 
 _TRANSFORMER_PATHS = {
@@ -66,7 +81,7 @@ if TRANSFORMER_AVAILABLE:
         if _paths["checkpoint"].exists() and _paths["tokenizer"].exists():
             try:
                 _tp = TransformerPredictor(
-                    str(_paths["checkpoint"]), str(_paths["tokenizer"]), device="cpu"
+                    str(_paths["checkpoint"]), str(_paths["tokenizer"]), device=DEVICE
                 )
                 if _paths["ngram_pkl"].exists():
                     _tp.load_word_vocab_from_ngram(str(_paths["ngram_pkl"]))
@@ -733,8 +748,8 @@ HTML = """
     };
 
     const WEIGHT_DESCS = {
-        operation: "Operation weights — transpositions (swapped adjacent letters, e.g. \"teh\" → \"the\") cost 0.5 instead of 1.0, since adjacent-letter swaps are the most common typing error.",
-        keyboard:  "Keyboard weights — keys physically close on QWERTY (e.g. \"s\" ↔ \"a\", \"r\" ↔ \"t\") also cost 0.5, modelling fat-finger errors.",
+        operation: 'Operation weights — transpositions (swapped adjacent letters, e.g. "teh" → "the") cost 0.5 instead of 1.0, since adjacent-letter swaps are the most common typing error.',
+        keyboard:  'Keyboard weights — keys physically close on QWERTY (e.g. "s" ↔ "a", "r" ↔ "t") also cost 0.5, modelling fat-finger errors.',
     };
 
     function getSpellParams() {
@@ -1077,4 +1092,10 @@ def suggest():
 if __name__ == "__main__":
     print(f"N-gram:      {AVAILABLE['ngram']}")
     print(f"Transformer: {AVAILABLE['transformer']}")
-    app.run(debug=True, use_reloader=False, threaded=True)
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False,
+        use_reloader=False,
+        threaded=True,
+    )
