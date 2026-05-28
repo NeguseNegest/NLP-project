@@ -1,0 +1,56 @@
+{
+    "dataset": "mobile_sms",
+    "checkpoint_path": "models/transformer/mobile_sms/checkpoint_final.pt",
+    "test_path": "scr/data/mobile_transformers/test_sms.txt",
+    "top_k_values": [
+        1,
+        2,
+        3,
+        4
+    ],
+    "max_test_sentences": 100,
+    "results_by_top_k": {
+        "1": {
+            "top_k": 1,
+            "total_words": 1043,
+            "total_characters": 4150,
+            "saved_keystrokes": 2128,
+            "saved_keystroke_ratio": 0.5127710843373494,
+            "top_k_correct_words": 985,
+            "top_k_accuracy": 0.9443911792905082
+        },
+        "2": {
+            "top_k": 2,
+            "total_words": 1043,
+            "total_characters": 4150,
+            "saved_keystrokes": 2603,
+            "saved_keystroke_ratio": 0.6272289156626506,
+            "top_k_correct_words": 1014,
+            "top_k_accuracy": 0.9721955896452541
+        },
+        "3": {
+            "top_k": 3,
+            "total_words": 1043,
+            "total_characters": 4150,
+            "saved_keystrokes": 2798,
+            "saved_keystroke_ratio": 0.6742168674698795,
+            "top_k_correct_words": 1019,
+            "top_k_accuracy": 0.9769894534995206
+        },
+        "4": {
+            "top_k": 4,
+            "total_words": 1043,
+            "total_characters": 4150,
+            "saved_keystrokes": 2920,
+            "saved_keystroke_ratio": 0.7036144578313253,
+            "top_k_correct_words": 1020,
+            "top_k_accuracy": 0.9779482262703739
+        }
+    },
+    "perplexity_metrics": {
+        "evaluated_lines": 100,
+        "evaluated_tokens": 1161,
+        "cross_entropy_loss": 4.184090193338583,
+        "perplexity": 65.63375971258546
+    }
+}

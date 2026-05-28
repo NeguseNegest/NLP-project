@@ -2,7 +2,7 @@
 
 ![Screenshot](miscl/image_web.png)
 
-Project folder overivew 
+Project folder overview
 
 ```
 NLP-Project/
@@ -23,7 +23,7 @@ NLP-Project/
 │   ├── metrics/
 │   └── plots/
 │
-├── src/
+├── scr/
 │   ├── preprocessing.py
 │   ├── tokenizer.py
 │   ├── ngram_model.py
@@ -38,50 +38,37 @@ NLP-Project/
 └── README.md
 ```
 
-## Do the following to test the word predictor, run first the folllowing command:
+## To test the word predictor, first run:
 
 ```bash
- python scr/ngram/ngram_train.py 
- ``` 
+python scr/ngram/ngram_train.py
+```
 
- ## The run the gui and start typing
+## Then run the GUI and start typing
 
- ```bash 
- python scr/gui_app.py
- ```
+```bash
+python scr/gui_app.py
+```
 
 
 
- # Results
+# Results
 
- ## Summary of Language Model Evaluation
+## Summary of Language Model Evaluation
 
-The best interpolation weights found during tuning were:
+The project now contains results for **TinyStories**, **WikiText-2**, and **Mobile SMS**. The N-gram model was tuned separately for each dataset.
 
-| N-gram model | Lambda weight |
-|---|---:|
-| Unigram (1-gram) | 0.0 |
-| Bigram (2-gram) | 0.0 |
-| Trigram (3-gram) | 0.1 |
-| 4-gram | 0.9 |
+| Dataset | λ1 unigram | λ2 bigram | λ3 trigram | λ4 4-gram |
+|---|---:|---:|---:|---:|
+| TinyStories | 0.0 | 0.0 | 0.1 | 0.9 |
+| WikiText-2 | 0.0 | 0.1 | 0.9 | 0.0 |
+| Mobile SMS | 0.0 | 0.1 | 0.7 | 0.2 |
 
-This means the final model relies mostly on the **4-gram model**, with a small contribution from the **3-gram model**.
+TinyStories benefits most from the 4-gram model, while WikiText-2 and Mobile SMS rely more strongly on trigram context.
 
-## Best Validation Result
+## N-gram Word Prediction
 
-The best validation performance was obtained with:
-
-- **Top-k:** 3 suggestions
-- **Saved keystrokes:** 122,158
-- **Saved keystroke ratio:** 68.04%
-- **Top-k accuracy:** 51.48%
-- **Success rate:** 95.40%
-- **Appeared rate:** 99.88%
-- **Mean characters typed before suggestion:** 1.24
-
-This means that when showing the top 3 suggestions, the correct word appeared in the suggestions about **51.5%** of the time. The system also saved about **68%** of the total characters that would otherwise have been typed.
-
-## Test Results by Number of Suggestions
+### TinyStories test set
 
 | Top-k | Top-k accuracy | Saved keystroke ratio | Saved keystrokes |
 |---:|---:|---:|---:|
@@ -90,20 +77,61 @@ This means that when showing the top 3 suggestions, the correct word appeared in
 | 3 | 51.42% | 68.03% | 173,665 |
 | 4 | 56.47% | 69.29% | 176,900 |
 
-Increasing the number of suggestions improves both accuracy and saved keystrokes. However, the improvement becomes smaller after `top_k = 3`. For example, going from 3 to 4 suggestions only increases the saved keystroke ratio from **68.03%** to **69.29%**.
+### WikiText-2 test set
 
-## Cross-Entropy and Perplexity
+| Top-k | Top-k accuracy | Saved keystroke ratio | Saved keystrokes |
+|---:|---:|---:|---:|
+| 1 | 16.59% | 40.14% | 154,382 |
+| 2 | 22.28% | 48.88% | 188,005 |
+| 3 | 26.08% | 52.89% | 203,401 |
+| 4 | 28.68% | 55.30% | 212,670 |
 
-The model achieved:
+WikiText-2 is harder because it has a larger and less repetitive vocabulary. Even so, the saved-keystroke ratio stays relatively high because useful completions often appear after only a few typed characters.
 
-- **Cross-entropy:** 5.55
-- **Perplexity:** 258.52
+### Mobile SMS validation set
 
-The perplexity means that, on average, the model is about as uncertain as choosing between **258 possible next words**. A lower perplexity would indicate a better language model, but this value is reasonable for a simple word-level n-gram model.
+Mobile SMS N-gram tuning was evaluated on the validation split. The best top-3 setting used `λ = {1: 0.0, 2: 0.1, 3: 0.7, 4: 0.2}`.
 
-## Conclusion
+| Top-k | Accuracy | Saved keystroke ratio | Success rate | Mean chars typed |
+|---:|---:|---:|---:|---:|
+| 3 | 27.10% | 58.42% | 86.45% | 1.68 |
 
-The best tuned model used interpolation weights of **λ₃ = 0.1** and **λ₄ = 0.9**, meaning it mainly depends on 4-word context. With `top_k = 3`, the model achieved a good balance between prediction quality and usability, reaching **51.42% top-k accuracy** and saving about **68.03%** of keystrokes on the test set. Although `top_k = 4` gives the highest accuracy and keystroke savings, `top_k = 3` is a reasonable tradeoff because it gives strong performance while showing fewer suggestions.
+## Transformer Word Prediction
+
+### Mobile SMS grid search
+
+The Mobile SMS transformer grid search used `block_size=128`, `vocab_size=5000`, `max_iters=10000`, and 20 validation sentences for quick evaluation.
+
+| Architecture | Stride | Blocks | Heads | Dim | Params | Val loss | Top-1 Acc | Top-3 Acc | Top-3 Saved |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| default | 32 | 4 | 4 | 256 | 5,752,712 | 4.8376 | 90.68% | 96.61% | 58.98% |
+| default | 8 | 4 | 4 | 256 | 5,752,712 | 4.8402 | 89.83% | 96.61% | 61.68% |
+| small | 32 | 2 | 2 | 128 | 1,696,904 | 5.1143 | 88.98% | 96.19% | 56.80% |
+| small | 8 | 2 | 2 | 128 | 1,696,904 | 5.1159 | 88.56% | 96.19% | 57.42% |
+
+The best top-1 grid-search score came from the default transformer with stride 32. The default stride-8 model had the same top-3 accuracy and a higher top-3 saved-keystroke ratio, so it is also a reasonable final-training choice.
+
+### Mobile SMS transformer test sample
+
+The saved transformer Mobile SMS word-prediction result file evaluates 100 test sentences.
+
+| Top-k | Top-k accuracy | Saved keystroke ratio | Saved keystrokes |
+|---:|---:|---:|---:|
+| 1 | 94.44% | 51.28% | 2,128 |
+| 2 | 97.22% | 62.72% | 2,603 |
+| 3 | 97.70% | 67.42% | 2,798 |
+| 4 | 97.79% | 70.36% | 2,920 |
+
+The result is high because Mobile SMS sentences are short and repetitive compared with TinyStories and WikiText-2. It should be read as an autocomplete evaluation: the target can be found after zero or more typed prefix characters.
+
+### Transformer perplexity
+
+| Dataset | Evaluated tokens | Cross-entropy / NLL | Perplexity |
+|---|---:|---:|---:|
+| TinyStories | 221,014 | 1.7375 | 5.68 |
+| WikiText-2 | 171,455 | 3.9785 | 53.44 |
+
+TinyStories has much lower perplexity, which matches the word-prediction and spell-correction results: it is a simpler, more regular dataset than WikiText-2.
 
 ---
 
@@ -289,6 +317,7 @@ For this evaluation, fixed corrupted test sets were created from the N-gram test
 ```text
 scr/data/tiny_stories/tinystories_test.txt
 scr/data/wikitext_2/wikitext2_test.txt
+scr/data/mobile_ngram/test_sms.txt
 ```
 
 Each test example was made as follows:
@@ -392,7 +421,7 @@ Saved-keystroke ratio means:
 Out of all characters the user intended to type, what fraction did the system save?
 ```
 
-Examples where the correct target word was not in the model vocabulary were skipped, because the model could not possibly suggest them. This is why WikiText-2 has more skipped examples than TinyStories.
+Examples where the correct target word was not in the model vocabulary were skipped, because the model could not possibly suggest them. This is why WikiText-2 has more skipped examples than TinyStories and Mobile SMS.
 
 ### Scoring setup
 
@@ -405,11 +434,18 @@ score(candidate) =
     + μ_freq · normalized_word_frequency
 ```
 
-The final test results below used:
+The TinyStories and WikiText-2 spell-correction results below used:
 
 ```text
 λ_edit = 0.5
 μ_freq = 0.1
+```
+
+The Mobile SMS spell-correction results used the validated Mobile SMS setting:
+
+```text
+λ_edit = 1.0
+μ_freq = 0.05
 ```
 
 The N-gram model used the previously tuned N-gram interpolation weights. The Transformer model used its trained checkpoint and tokenizer. The spell-correction examples were the same for both models.
@@ -450,22 +486,39 @@ Eval/OOV = evaluated examples / skipped out-of-vocabulary examples
 | S3 | N-gram | 902/98 | 57.32% | 17.61% | 66.08% | 24.46% | 70.84% | 27.87% | 72.39% | 29.89% |
 | S3 | Transformer | 902/98 | 53.10% | 11.50% | 62.42% | 17.59% | 66.30% | 20.65% | 69.07% | 23.00% |
 
+### Mobile SMS
+
+The Mobile SMS spell-correction evaluation was run on 100 examples.
+
+| Strategy | Model | Eval/OOV | Top-1 Acc | Top-1 Saved | Top-2 Acc | Top-2 Saved | Top-3 Acc | Top-3 Saved | Top-4 Acc | Top-4 Saved |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| S1 | N-gram | 98/2 | 82.65% | 27.73% | 88.78% | 34.01% | 90.82% | 37.65% | 90.82% | 40.69% |
+| S1 | Transformer | 98/2 | 88.78% | 32.59% | 91.84% | 38.87% | 92.86% | 44.53% | 93.88% | 47.77% |
+| S2 | N-gram | 98/2 | 63.27% | 13.97% | 76.53% | 20.24% | 82.65% | 26.52% | 83.67% | 28.95% |
+| S2 | Transformer | 98/2 | 74.49% | 21.66% | 82.65% | 29.76% | 84.69% | 33.60% | 86.73% | 38.87% |
+| S3 | N-gram | 98/2 | 64.29% | 14.37% | 76.53% | 20.85% | 82.65% | 26.52% | 84.69% | 29.15% |
+| S3 | Transformer | 98/2 | 75.51% | 21.66% | 82.65% | 29.96% | 84.69% | 34.01% | 86.73% | 38.87% |
+
 ### Relevant plots
 
 These plots show the top-3 strategy comparison for each model and dataset.
 
-![N-gram TinyStories spell correction](results/plots/ngram_spell/ngram_spell_tinystories_top3_strategy_comparison.png)
+![N-gram TinyStories spell correction](results/plots/ngram_spell_plots/tinystories/ngram_spell_tinystories_top3_strategy_comparison.png)
 
-![Transformer TinyStories spell correction](results/plots/transformer_spell_plots/transformer_spell_tinystories_top3_strategy_comparison.png)
+![Transformer TinyStories spell correction](results/plots/transformer_spell_plots/tinystories/transformer_spell_tinystories_top3_strategy_comparison.png)
 
-![N-gram WikiText-2 spell correction](results/plots/ngram_spell/ngram_spell_wikitext2_top3_strategy_comparison.png)
+![N-gram WikiText-2 spell correction](results/plots/ngram_spell_plots/wikitext2/ngram_spell_wikitext2_top3_strategy_comparison.png)
 
-![Transformer WikiText-2 spell correction](results/plots/transformer_spell_plots/transformer_spell_wikitext2_top3_strategy_comparison.png)
+![Transformer WikiText-2 spell correction](results/plots/transformer_spell_plots/wikitext2/transformer_spell_wikitext2_top3_strategy_comparison.png)
+
+![N-gram Mobile SMS spell correction](results/plots/ngram_spell_plots/mobil_sms/ngram_spell_mobile_sms_top3_strategy_comparison.png)
+
+![Transformer Mobile SMS spell correction](results/plots/transformer_spell_plots/mobile_sms/transformer_spell_mobile_sms_top3_strategy_comparison.png)
 
 More detailed plots are saved under:
 
 ```text
-results/plots/ngram_spell/
+results/plots/ngram_spell_plots/
 results/plots/transformer_spell_plots/
 ```
 
@@ -488,11 +541,11 @@ For example, on TinyStories with top-3 suggestions:
 
 This is expected. With two mistakes, the corrupted prefix can be much farther from the correct word. More wrong candidates become possible, so ranking the correct word becomes harder.
 
-### TinyStories is easier than WikiText-2
+### TinyStories and Mobile SMS are easier than WikiText-2
 
-Both models perform better on TinyStories than on WikiText-2.
+Both models perform better on TinyStories than on WikiText-2. Mobile SMS is also easier for the Transformer in the 100-example spell-correction run, although it was evaluated on a smaller sample.
 
-TinyStories has simpler sentences and more repeated patterns. WikiText-2 has more varied vocabulary, names, rare words, and longer contexts. This makes WikiText-2 harder for spelling correction.
+TinyStories has simpler sentences and more repeated patterns. Mobile SMS has very short messages and frequent common phrases. WikiText-2 has more varied vocabulary, names, rare words, and longer contexts, which makes it harder for spelling correction.
 
 The number of skipped examples also shows this:
 
@@ -500,12 +553,13 @@ The number of skipped examples also shows this:
 |---|---:|---:|---:|
 | TinyStories | 1,000 | 999 | 1 |
 | WikiText-2 | 1,000 | 902 | 98 |
+| Mobile SMS | 100 | 98 | 2 |
 
 WikiText-2 has many more target words that were outside the model vocabulary, so those examples had to be skipped.
 
-### N-gram performed better than Transformer for spell correction
+### Model comparison for spell correction
 
-For spell correction, the N-gram model performed better than the Transformer on both datasets.
+For TinyStories and WikiText-2, the N-gram model performed better than the Transformer. On Mobile SMS, the Transformer performed better in the 100-example run.
 
 At top-3:
 
@@ -517,15 +571,18 @@ At top-3:
 | WikiText-2 | S1 | 84.70% | 80.71% | 39.41% | 29.98% |
 | WikiText-2 | S2 | 71.06% | 66.41% | 27.80% | 20.65% |
 | WikiText-2 | S3 | 70.84% | 66.30% | 27.87% | 20.65% |
+| Mobile SMS | S1 | 90.82% | 92.86% | 37.65% | 44.53% |
+| Mobile SMS | S2 | 82.65% | 84.69% | 26.52% | 33.60% |
+| Mobile SMS | S3 | 82.65% | 84.69% | 26.52% | 34.01% |
 
-This may seem surprising because Transformers are usually stronger language models. However, this spell-correction setup is very word-based:
+The TinyStories and WikiText-2 result may seem surprising because Transformers are usually stronger language models. However, this spell-correction setup is very word-based:
 
 1. First, the system finds candidate words close to the typed misspelling.
 2. Then it ranks those whole-word candidates.
 3. The N-gram model scores whole words directly.
 4. The Transformer uses subword tokens, so scoring a full candidate word can be less direct.
 
-In other words, clean word prediction mainly tests language modeling. Spell correction tests a combination of edit distance, word frequency, candidate generation, and language-model scoring. The N-gram model is simple, but it fits this word-level candidate-ranking pipeline very well.
+In other words, clean word prediction mainly tests language modeling. Spell correction tests a combination of edit distance, word frequency, candidate generation, and language-model scoring. The N-gram model is simple, but it fits this word-level candidate-ranking pipeline very well. The Mobile SMS result shows that the Transformer can still be competitive when the text is short and repetitive.
 
 ### S3 only changed the results slightly
 
@@ -557,11 +614,11 @@ Top-4 gives the best score, but top-3 is still a reasonable practical choice bec
 
 ## Spell-Parameter Validation Note
 
-After the final spell-correction evaluation, a small validation experiment was run on 100 corrupted validation examples. This validation searched over:
+Small validation experiments were run to tune `λ_edit` and `μ_freq`. TinyStories and WikiText-2 used 100 corrupted validation examples; Mobile SMS used 20 examples.
 
 ```text
-λ_edit ∈ {0.0, 0.25, 0.5, 0.75, 1.0}
-μ_freq ∈ {0.0, 0.05, 0.1, 0.2}
+λ_edit ∈ {0.25, 0.5, 0.75, 1.0}
+μ_freq ∈ {0.05, 0.1, 0.2}
 ```
 
 The objective was top-3 saved-keystroke ratio.
@@ -570,14 +627,8 @@ The best validation settings were:
 
 | Dataset | Strategy used for validation | Best λ_edit | Best μ_freq | Top-3 validation accuracy | Top-3 validation saved ratio |
 |---|---|---:|---:|---:|---:|
+| TinyStories | S2 | 1.0 | 0.05 | 91.00% | 51.95% |
 | TinyStories | S3 | 1.0 | 0.05 | 90.00% | 51.95% |
 | WikiText-2 | S3 | 1.0 | 0.20 | 71.88% | 27.30% |
+| Mobile SMS | S3 | 1.0 | 0.05 | 90.00% | 32.48% |
 
-These validation results were **not used to rerun the final test evaluation shown above**. The final tables still use:
-
-```text
-λ_edit = 0.5
-μ_freq = 0.1
-```
-
-The validation result suggests that a stronger edit-distance penalty may improve the spell corrector. Future experiments could rerun the final test results using the validated values, possibly with dataset-specific frequency weights.

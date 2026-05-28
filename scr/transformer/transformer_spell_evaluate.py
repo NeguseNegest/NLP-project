@@ -1,20 +1,5 @@
 """
 Evaluate Transformer spell correction on fixed corrupted-word datasets.
-
-This file is intentionally separate from transformer_evaluate.py because it
-evaluates misspelled final-word correction rather than clean next-word
-prediction.
-
-Examples:
-    # Run all datasets and all spell strategies
-    python scr/transformer/transformer_spell_evaluate.py
-
-    # Quick smoke test
-    python scr/transformer/transformer_spell_evaluate.py --dataset tinystories --strategy s1 --max_examples 20
-
-Outputs:
-    results/metrics/transformer_spell/
-    results/plots/transformer_spell/
 """
 
 import argparse
@@ -71,6 +56,14 @@ DATASET_CONFIGS = {
         ],
         "train_text": "scr/data/wikitext_2_transformer/wikitext2_transformer_train.txt",
         "spell_eval_dir": "scr/data/spell_eval/wikitext2",
+    },
+    "mobile_sms": {
+        "model_dir": "models/transformer/mobile_sms",
+        "ngram_model_candidates": [
+            "models/ngram/mobile_sms_ngram_model.pkl",
+        ],
+        "train_text": "scr/data/mobile_transformers/train_sms.txt",
+        "spell_eval_dir": "scr/data/spell_eval/mobile_sms",
     },
 }
 
@@ -640,7 +633,7 @@ def parse_args():
     )
     parser.add_argument(
         "--dataset",
-        choices=["all", "tinystories", "wikitext2"],
+        choices=["all", *DATASET_CONFIGS.keys()],
         default="all",
     )
     parser.add_argument(

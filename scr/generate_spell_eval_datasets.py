@@ -1,22 +1,7 @@
 """
 Generate fixed misspelled-word evaluation datasets.
 
-The script samples clean sentences from the existing N-gram test files,
-corrupts only the final word, and writes paired JSONL files for exact
-edit distance 1 and exact edit distance 2.
-
-Example:
-    python scr/generate_spell_eval_datasets.py
-
-Outputs:
-    scr/data/spell_eval/tinystories/test_edit1.jsonl
-    scr/data/spell_eval/tinystories/test_edit2.jsonl
-    scr/data/spell_eval/wikitext2/test_edit1.jsonl
-    scr/data/spell_eval/wikitext2/test_edit2.jsonl
-
-S1 should use test_edit1.jsonl.
-S2 should use test_edit2.jsonl.
-S3 should reuse test_edit2.jsonl with weighted edit distance.
+Creates exact edit-distance 1 and 2 JSONL files for each dataset.
 """
 
 import argparse
@@ -40,6 +25,7 @@ EDIT_TYPES = ("insertion", "deletion", "substitution", "transposition")
 DATASETS = {
     "tinystories": "scr/data/tiny_stories/tinystories_test.txt",
     "wikitext2": "scr/data/wikitext_2/wikitext2_test.txt",
+    "mobile_sms": "scr/data/mobile_ngram/test_sms.txt",
 }
 
 
@@ -48,7 +34,6 @@ def clean_token(token):
 
 
 def load_candidate_sample(path, rng, sample_pool_size):
-    """Return a reservoir sample of clean candidates and the corpus vocabulary."""
     sentence_sample = []
     vocab = set()
     candidate_count = 0
@@ -123,7 +108,6 @@ def apply_one_edit(word, rng, edit_type):
 
 
 def corrupt_word(target, edit_distance, vocab, rng, max_attempts=200):
-    """Create a corruption with exactly the requested edit distance."""
     if edit_distance not in {1, 2}:
         raise ValueError("Only edit distances 1 and 2 are supported.")
 
@@ -240,6 +224,12 @@ def parse_args():
         description="Generate fixed misspelled-word test datasets."
     )
     parser.add_argument("--num_examples", type=int, default=1000)
+    parser.add_argument(
+        "--dataset",
+        choices=["all", *DATASETS.keys()],
+        default="all",
+        help="Dataset to generate. Defaults to all configured datasets.",
+    )
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument(
         "--sample_pool_size",
@@ -265,7 +255,13 @@ def main():
 
     summary = {}
 
-    for offset, (dataset_name, relative_path) in enumerate(DATASETS.items()):
+    selected_datasets = (
+        DATASETS.items()
+        if args.dataset == "all"
+        else [(args.dataset, DATASETS[args.dataset])]
+    )
+
+    for offset, (dataset_name, relative_path) in enumerate(selected_datasets):
         source_path = project_root / relative_path
         dataset_seed = args.seed + offset * 1000
 

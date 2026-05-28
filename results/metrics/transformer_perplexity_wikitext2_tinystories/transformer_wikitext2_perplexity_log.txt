@@ -1,0 +1,26 @@
+======================================================================
+Transformer perplexity evaluation
+======================================================================
+Dataset        : wikitext2
+Device         : cuda
+Checkpoint     : /content/drive/MyDrive/NLP-project/models/transformer/wikitext2/checkpoint_final.pt
+Tokenizer      : /content/drive/MyDrive/NLP-project/models/transformer/wikitext2/tokenizer.json
+Test data      : /content/drive/MyDrive/NLP-project/scr/data/wikitext_2_transformer/wikitext2_transformer_test.txt
+Max sentences  : 1000
+Batch size     : 32
+
+Model loaded from /content/drive/MyDrive/NLP-project/models/transformer/wikitext2/checkpoint_final.pt (epoch 0, iter 37000) on device cuda
+Model block size: 512
+Evaluation stride: 512
+
+Characters loaded: 599,471
+Tokens loaded    : 171,456
+
+Computing perplexity:   0%|          | 0/11 [00:00<?, ?it/s]Computing perplexity:   9%|▉         | 1/11 [00:00<00:01,  8.11it/s]Computing perplexity: 100%|██████████| 11/11 [00:00<00:00, 51.80it/s]
+======================================================================
+Results
+======================================================================
+Tokens evaluated     : 171,455
+Average NLL/loss     : 3.978480
+Perplexity           : 53.4358
+Results saved to     : /content/drive/MyDrive/NLP-project/results/jonathan/transformer_wikitext2_perplexity.json

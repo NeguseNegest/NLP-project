@@ -34,11 +34,6 @@ def load_preprocessed_sentences(path):
 
 
 def generate_lambda_grid(max_n_gram=4, step=0.1):
-    """
-    Generates interpolation weights for n-gram interpolation.
-    The weights always sum to 1.
-    """
-
     units = int(round(1.0 / step))
 
     def generate_compositions(total, parts):
@@ -59,16 +54,6 @@ def generate_lambda_grid(max_n_gram=4, step=0.1):
 
 
 def target_in_top_k_exact(model, candidates, scores, target_word, top_k):
-    """
-    Checks whether target_word is in the top-k candidates.
-
-    Ranking:
-        1. higher probability
-        2. higher word frequency
-        3. shorter word
-        4. alphabetical order
-    """
-
     scored_candidates = zip(candidates, scores)
 
     top_candidates = heapq.nsmallest(
@@ -93,20 +78,6 @@ def tune_lambdas_one_validation_pass(
     max_eval_sentences=1000,
     include_empty_prefix=False,
 ):
-    """
-    Tunes interpolation weights using saved-keystroke ratio on validation data.
-
-    This function searches over lambda combinations, where:
-
-        P_interpolated =
-            lambda_1 P_unigram
-          + lambda_2 P_bigram
-          + lambda_3 P_trigram
-          + lambda_4 P_4gram
-
-    The best lambda setting is selected by validation saved-keystroke ratio.
-    """
-
     if max_eval_sentences is not None:
         val_sentences = val_sentences[:max_eval_sentences]
 
@@ -282,14 +253,6 @@ def evaluate_saved_keystrokes(
     max_eval_sentences=None,
     include_empty_prefix=False,
 ):
-    """
-    Evaluates:
-        1. saved-keystroke ratio
-        2. true top-k next-word accuracy
-        3. success rate
-        4. prefix appeared rate
-    """
-
     if max_eval_sentences is not None:
         tokenized_sentences = tokenized_sentences[:max_eval_sentences]
 

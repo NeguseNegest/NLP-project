@@ -10,11 +10,7 @@ import torch.nn as nn
 
 
 def resolve_torch_device(device="auto"):
-    """Resolve the requested device safely.
-
-    - "auto" chooses CUDA if available, then Apple MPS, then CPU.
-    - "cuda" falls back to CPU if CUDA is unavailable instead of crashing.
-    """
+    """Resolve auto/cuda/mps/cpu safely."""
     if device is None or str(device).lower() == "auto":
         if torch.cuda.is_available():
             return torch.device("cuda")
@@ -94,12 +90,15 @@ class TinyStoriesLM(nn.Module):
         ])
         self.final = nn.Linear(config.vector_dim, config.vocab_size)
 
-    def forward(self, x):
+    def hidden(self, x):
         _, T = x.shape
         h = self.embed(x) + self.positional[:, :T, :]
         for block in self.transformers:
             h = block(h)
-        return self.final(h)
+        return h
+
+    def forward(self, x):
+        return self.final(self.hidden(x))
 
     @classmethod
     def load(cls, checkpoint_path, device="auto"):
@@ -130,6 +129,8 @@ class TransformerPredictor:
         self._word_tokens = {}
         self._logits_cache_key = None
         self._logits_cache_probs = None
+        self._full_score_cache_key = None
+        self._full_rank_cache = None
 
     def load_word_vocab_from_ngram(self, ngram_model_path):
         ngram_dir = str(Path(ngram_model_path).resolve().parents[2] / "scr" / "ngram")
@@ -170,6 +171,8 @@ class TransformerPredictor:
         for word in self.word_vocab:
             _, ids = self.tokenizer.tokenize(" " + word)
             self._word_tokens[word] = ids if ids else [0]
+        self._full_score_cache_key = None
+        self._full_rank_cache = None
         print(f"Pre-tokenized {len(self._word_tokens):,} words.")
 
     def parse_text_input(self, text):
@@ -187,40 +190,92 @@ class TransformerPredictor:
         return self.prefix_index.get(prefix.lower().strip(), [])
 
     def predict(self, context, prefix="", top_k=5, include_scores=True):
-        candidates = self.get_candidates(prefix)
+        normalized_prefix = prefix.lower().strip()
+        candidates = self.get_candidates(normalized_prefix)
         if not candidates:
             return []
 
-        scores = self._score_candidates(context, candidates)
-
-        ranked = heapq.nsmallest(
-            top_k,
-            zip(candidates, scores),
-            key=lambda item: (
-                -item[1],
-                -self.word_counts.get(item[0], 0),
-                len(item[0]),
-                item[0],
-            ),
+        context_state = self._context_state(context)
+        use_full_rank_cache = (
+            context_state[0] == "model"
+            and self._full_score_cache_key == context_state
+            and self._full_rank_cache is not None
         )
 
+        if use_full_rank_cache:
+            ranked = self._top_from_full_rank_cache(normalized_prefix, top_k)
+        else:
+            scores = self._score_candidates(context, candidates, context_state=context_state)
+            scored_candidates = list(zip(candidates, scores))
+
+            if (
+                context_state[0] == "model"
+                and normalized_prefix == ""
+                and len(candidates) == len(self.word_vocab)
+            ):
+                self._full_score_cache_key = context_state
+                self._full_rank_cache = sorted(scored_candidates, key=self._rank_key)
+                ranked = self._full_rank_cache[:top_k]
+            else:
+                ranked = self._rank_items(scored_candidates, top_k)
+
         return list(ranked) if include_scores else [w for w, _ in ranked]
+
+    def _rank_key(self, item):
+        return (
+            -item[1],
+            -self.word_counts.get(item[0], 0),
+            len(item[0]),
+            item[0],
+        )
+
+    def _rank_items(self, items, top_k):
+        return heapq.nsmallest(
+            top_k,
+            items,
+            key=self._rank_key,
+        )
+
+    def _top_from_full_rank_cache(self, prefix, top_k):
+        if not prefix:
+            return self._full_rank_cache[:top_k]
+
+        ranked = []
+        for word, score in self._full_rank_cache:
+            if word.startswith(prefix):
+                ranked.append((word, score))
+                if len(ranked) >= top_k:
+                    break
+        return ranked
 
     def predict_interpolated(self, context, prefix="", top_k=5, lambdas=None, include_scores=True):
         return self.predict(context, prefix, top_k, include_scores)
 
-    def _score_candidates(self, context, candidates):
+    def _context_state(self, context):
         context_text = " ".join(context)
 
         if not context_text:
-            freq_total = sum(self.word_counts.get(w, 1) for w in candidates)
-            return [self.word_counts.get(w, 1) / freq_total for w in candidates]
+            return ("frequency", ())
 
         _, context_ids = self.tokenizer.tokenize(" " + context_text)
         if not context_ids:
+            return ("uniform", ())
+
+        context_ids = tuple(context_ids[-(self.model.config.block_size - 1):])
+        return ("model", context_ids)
+
+    def _score_candidates(self, context, candidates, context_state=None):
+        context_state = context_state or self._context_state(context)
+        context_mode, context_ids = context_state
+
+        if context_mode == "frequency":
+            freq_total = sum(self.word_counts.get(w, 1) for w in candidates)
+            return [self.word_counts.get(w, 1) / freq_total for w in candidates]
+
+        if context_mode == "uniform":
             return [1.0 / len(candidates)] * len(candidates)
 
-        context_ids = context_ids[-(self.model.config.block_size - 1):]
+        context_ids = list(context_ids)
         ctx_len = len(context_ids)
         block_size = self.model.config.block_size
         cache_key = tuple(context_ids)
@@ -236,8 +291,9 @@ class TransformerPredictor:
             if cache_key != self._logits_cache_key:
                 x = torch.tensor(context_ids, dtype=torch.long, device=self.device).unsqueeze(0)
                 with torch.inference_mode():
-                    logits = self.model(x)
-                self._logits_cache_probs = torch.softmax(logits[0, -1, :], dim=-1).detach().cpu()
+                    h = self.model.hidden(x)
+                    logits = self.model.final(h[:, -1, :])
+                self._logits_cache_probs = torch.softmax(logits[0], dim=-1).detach().cpu()
                 self._logits_cache_key = cache_key
             probs = self._logits_cache_probs
             vocab_size = len(probs)
@@ -246,9 +302,9 @@ class TransformerPredictor:
                 all_scores[i] = probs[tid].item() if tid < vocab_size else 0.0
 
         if multi_indices:
-            CHUNK_SIZE = 128
-            for chunk_start in range(0, len(multi_indices), CHUNK_SIZE):
-                chunk_idx = multi_indices[chunk_start:chunk_start + CHUNK_SIZE]
+            chunk_size = 8192 if self.device.type == "cuda" else 1024
+            for chunk_start in range(0, len(multi_indices), chunk_size):
+                chunk_idx = multi_indices[chunk_start:chunk_start + chunk_size]
                 chunk_toks = [word_toks_list[i] for i in chunk_idx]
                 max_word_len = max(len(toks) for toks in chunk_toks)
                 target_len = min(ctx_len + max_word_len - 1, block_size)
@@ -260,15 +316,43 @@ class TransformerPredictor:
                     batch.append(inp[:target_len])
 
                 x = torch.tensor(batch, dtype=torch.long, device=self.device)
-                with torch.inference_mode():
-                    logits = self.model(x)
-                log_p = torch.log_softmax(logits, dim=-1).detach().cpu()
-
-                for k, (orig_i, toks) in enumerate(zip(chunk_idx, chunk_toks)):
-                    score = 0.0
+                row_ids = []
+                pos_ids = []
+                token_ids = []
+                candidate_ids = []
+                for k, toks in enumerate(chunk_toks):
                     for j, tok_id in enumerate(toks):
-                        pos = min(ctx_len - 1 + j, log_p.shape[1] - 1)
-                        score += log_p[k, pos, tok_id].item() if tok_id < log_p.shape[2] else -20.0
-                    all_scores[orig_i] = math.exp(score)
+                        row_ids.append(k)
+                        pos_ids.append(min(ctx_len - 1 + j, target_len - 1))
+                        token_ids.append(tok_id)
+                        candidate_ids.append(k)
+
+                with torch.inference_mode():
+                    h = self.model.hidden(x)
+                    row_t = torch.tensor(row_ids, dtype=torch.long, device=self.device)
+                    pos_t = torch.tensor(pos_ids, dtype=torch.long, device=self.device)
+                    tok_t = torch.tensor(token_ids, dtype=torch.long, device=self.device)
+                    cand_t = torch.tensor(candidate_ids, dtype=torch.long, device=self.device)
+
+                    selected_h = h[row_t, pos_t, :]
+                    selected_logits = self.model.final(selected_h)
+                    vocab_size = selected_logits.shape[-1]
+                    safe_tok_t = tok_t.clamp(0, vocab_size - 1)
+                    token_log_p = torch.log_softmax(selected_logits, dim=-1)[
+                        torch.arange(safe_tok_t.numel(), device=self.device), safe_tok_t
+                    ]
+                    invalid = (tok_t < 0) | (tok_t >= vocab_size)
+                    token_log_p = torch.where(
+                        invalid,
+                        torch.full_like(token_log_p, -20.0),
+                        token_log_p,
+                    )
+
+                    score_sums = torch.zeros(len(chunk_idx), dtype=token_log_p.dtype, device=self.device)
+                    score_sums.index_add_(0, cand_t, token_log_p)
+                    score_probs = torch.exp(score_sums).detach().cpu().tolist()
+
+                for orig_i, score in zip(chunk_idx, score_probs):
+                    all_scores[orig_i] = score
 
         return all_scores

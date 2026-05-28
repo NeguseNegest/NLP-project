@@ -1,0 +1,137 @@
+{
+    "dataset": "mobile_sms",
+    "train_text": "/content/drive/MyDrive/NLP-project/scr/data/mobile_transformers/train_sms.txt",
+    "val_text": "/content/drive/MyDrive/NLP-project/scr/data/mobile_transformers/validate_sms.txt",
+    "eval_text": "/content/drive/MyDrive/NLP-project/scr/data/mobile_transformers/validate_sms.txt",
+    "max_iters": 10000,
+    "block_size": 128,
+    "archs": [
+        "small",
+        "default"
+    ],
+    "strides": [
+        8,
+        32
+    ],
+    "max_eval_sentences": 20,
+    "max_val_batches": 0,
+    "selection_metric": "eval.1.top_k_accuracy",
+    "runs": [
+        {
+            "arch": "small",
+            "n_blocks": 2,
+            "n_heads": 2,
+            "vector_dim": 128,
+            "stride": 8,
+            "n_params": 1696904,
+            "iterations": 10000,
+            "val_loss": 5.115879180583548,
+            "eval": {
+                "1": {
+                    "top_k_accuracy": 0.885593220338983,
+                    "saved_keystroke_ratio": 0.3811007268951194
+                },
+                "2": {
+                    "top_k_accuracy": 0.940677966101695,
+                    "saved_keystroke_ratio": 0.514018691588785
+                },
+                "3": {
+                    "top_k_accuracy": 0.961864406779661,
+                    "saved_keystroke_ratio": 0.5742471443406023
+                },
+                "4": {
+                    "top_k_accuracy": 0.9661016949152542,
+                    "saved_keystroke_ratio": 0.6043613707165109
+                }
+            },
+            "checkpoint": "/content/drive/MyDrive/NLP-project/models/transformer/mobile_sms/mobile_sms_grid_small_s8_checkpoint.pt"
+        },
+        {
+            "arch": "small",
+            "n_blocks": 2,
+            "n_heads": 2,
+            "vector_dim": 128,
+            "stride": 32,
+            "n_params": 1696904,
+            "iterations": 10000,
+            "val_loss": 5.11433142804085,
+            "eval": {
+                "1": {
+                    "top_k_accuracy": 0.8898305084745762,
+                    "saved_keystroke_ratio": 0.3894080996884735
+                },
+                "2": {
+                    "top_k_accuracy": 0.9449152542372882,
+                    "saved_keystroke_ratio": 0.5067497403946002
+                },
+                "3": {
+                    "top_k_accuracy": 0.961864406779661,
+                    "saved_keystroke_ratio": 0.5680166147455867
+                },
+                "4": {
+                    "top_k_accuracy": 0.9661016949152542,
+                    "saved_keystroke_ratio": 0.6002076843198338
+                }
+            },
+            "checkpoint": "/content/drive/MyDrive/NLP-project/models/transformer/mobile_sms/mobile_sms_grid_small_s32_checkpoint.pt"
+        },
+        {
+            "arch": "default",
+            "n_blocks": 4,
+            "n_heads": 4,
+            "vector_dim": 256,
+            "stride": 8,
+            "n_params": 5752712,
+            "iterations": 10000,
+            "val_loss": 4.84024512514155,
+            "eval": {
+                "1": {
+                    "top_k_accuracy": 0.8983050847457628,
+                    "saved_keystroke_ratio": 0.4236760124610592
+                },
+                "2": {
+                    "top_k_accuracy": 0.9449152542372882,
+                    "saved_keystroke_ratio": 0.553478712357217
+                },
+                "3": {
+                    "top_k_accuracy": 0.9661016949152542,
+                    "saved_keystroke_ratio": 0.616822429906542
+                },
+                "4": {
+                    "top_k_accuracy": 0.9661016949152542,
+                    "saved_keystroke_ratio": 0.6448598130841121
+                }
+            },
+            "checkpoint": "/content/drive/MyDrive/NLP-project/models/transformer/mobile_sms/mobile_sms_grid_default_s8_checkpoint.pt"
+        },
+        {
+            "arch": "default",
+            "n_blocks": 4,
+            "n_heads": 4,
+            "vector_dim": 256,
+            "stride": 32,
+            "n_params": 5752712,
+            "iterations": 10000,
+            "val_loss": 4.83758733627644,
+            "eval": {
+                "1": {
+                    "top_k_accuracy": 0.9067796610169492,
+                    "saved_keystroke_ratio": 0.40602284527518173
+                },
+                "2": {
+                    "top_k_accuracy": 0.9576271186440678,
+                    "saved_keystroke_ratio": 0.5233644859813084
+                },
+                "3": {
+                    "top_k_accuracy": 0.9661016949152542,
+                    "saved_keystroke_ratio": 0.5898234683281413
+                },
+                "4": {
+                    "top_k_accuracy": 0.9661016949152542,
+                    "saved_keystroke_ratio": 0.6240913811007269
+                }
+            },
+            "checkpoint": "/content/drive/MyDrive/NLP-project/models/transformer/mobile_sms/mobile_sms_grid_default_s32_checkpoint.pt"
+        }
+    ]
+}

@@ -1,0 +1,26 @@
+======================================================================
+Transformer perplexity evaluation
+======================================================================
+Dataset        : tinystories
+Device         : cuda
+Checkpoint     : /content/drive/MyDrive/NLP-project/models/transformer/tinystories/checkpoint_final.pt
+Tokenizer      : /content/drive/MyDrive/NLP-project/models/transformer/tinystories/tokenizer.json
+Test data      : /content/drive/MyDrive/NLP-project/scr/data/tiny_stories_transformer/tinystories_transformer_test.txt
+Max sentences  : 1000
+Batch size     : 32
+
+Model loaded from /content/drive/MyDrive/NLP-project/models/transformer/tinystories/checkpoint_final.pt (epoch 0, iter 344500) on device cuda
+Model block size: 512
+Evaluation stride: 512
+
+Characters loaded: 910,959
+Tokens loaded    : 221,015
+
+Computing perplexity:   0%|          | 0/14 [00:00<?, ?it/s]Computing perplexity:   7%|▋         | 1/14 [00:00<00:02,  5.83it/s]Computing perplexity:  86%|████████▌ | 12/14 [00:00<00:00, 51.50it/s]Computing perplexity: 100%|██████████| 14/14 [00:00<00:00, 47.77it/s]
+======================================================================
+Results
+======================================================================
+Tokens evaluated     : 221,014
+Average NLL/loss     : 1.737548
+Perplexity           : 5.6834
+Results saved to     : /content/drive/MyDrive/NLP-project/results/jonathan/transformer_tinystories_perplexity.json

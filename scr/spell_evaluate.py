@@ -1,23 +1,5 @@
 """
 Evaluate the SpellCorrector on noisy input.
-
-Two modes:
-  --noise_mode synthetic   : randomly corrupt each test word and check recovery
-  --noise_mode github      : use a GitHub Typo Corpus TSV (typo\tcorrection)
-
-Produces the same metrics as transformer_evaluate / ngram_evaluate:
-  top-k accuracy  and  saved keystroke ratio
-
-Usage examples:
-  # Transformer + synthetic noise
-  python spell_evaluate.py --model transformer --dataset wikitext2 --noise_mode synthetic
-
-  # N-gram + synthetic noise
-  python spell_evaluate.py --model ngram --dataset wikitext2 --noise_mode synthetic
-
-  # Transformer + GitHub Typo Corpus
-  python spell_evaluate.py --model transformer --dataset wikitext2 \
-      --noise_mode github --github_typo_path /path/to/github_typos.tsv
 """
 
 import argparse
@@ -52,7 +34,6 @@ def load_sentences(path, max_sentences=None):
 
 
 def load_github_typos(path):
-    """Load (typo, correction) pairs from a TSV file."""
     pairs = []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
@@ -65,10 +46,6 @@ def load_github_typos(path):
 
 
 def evaluate_synthetic(corrector, sentences, max_edit_dist=1):
-    """
-    For each word in each sentence, corrupt it with a random typo and
-    check whether the corrector recovers the original word in top-k.
-    """
     total_words = 0
     total_chars = 0
     saved_by_k = {k: 0 for k in TOP_K_VALUES}
@@ -84,7 +61,7 @@ def evaluate_synthetic(corrector, sentences, max_edit_dist=1):
 
             corrupted = introduce_typo(target_word, max_edit_dist=max_edit_dist)
             if corrupted == target_word:
-                continue  # no typo was introduced, skip
+                continue
 
             context = sentence[:i]
             total_words += 1
@@ -93,7 +70,6 @@ def evaluate_synthetic(corrector, sentences, max_edit_dist=1):
             found = {k: False for k in TOP_K_VALUES}
             chars_found = {k: len(target_word) for k in TOP_K_VALUES}
 
-            # Check progressively longer prefixes of the corrupted word
             for chars_typed in range(0, len(corrupted) + 1):
                 if all(found.values()):
                     break
@@ -121,11 +97,6 @@ def evaluate_synthetic(corrector, sentences, max_edit_dist=1):
 
 
 def evaluate_github(corrector, sentences, typo_pairs):
-    """
-    Use GitHub Typo Corpus pairs. For each typo in the corpus that appears
-    as a word in the test sentences, check if the corrector produces the
-    correct word.
-    """
     typo_map = {typo: correction for typo, correction in typo_pairs}
 
     total_words = 0
@@ -141,7 +112,6 @@ def evaluate_github(corrector, sentences, typo_pairs):
             if not target_word:
                 continue
 
-            # Only evaluate words that have a known typo in the corpus
             if target_word not in typo_map:
                 continue
             corrupted = typo_map[target_word]

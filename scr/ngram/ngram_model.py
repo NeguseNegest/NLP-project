@@ -8,25 +8,17 @@ import heapq
 class NGramModel:
 
     def __init__(self, max_n_gram=4, min_count=1, unk_token="<UNK>", start_token="<s>", end_token="</s>"):
-
-        """ the constructor takes in 2 parameters;
-
-            max_n_gram : 
-                the maximum n-gram model we use for example max_n_gram=4 we use all n-grams up to 4-gram
-            min_count: 
-                    the minimum number of occurences a word needs to have to be included in the vocab we set it to 1
-            """
         self.max_n_gram = max_n_gram
         self.min_count = min_count
         self.unk_token = unk_token
         self.start_token = start_token
         self.end_token = end_token
 
-        self.vocab = set() #vocabulary
-        self.word_counts = Counter() #word count unique ones
-        self.total_words = 0 # number of total words
+        self.vocab = set()
+        self.word_counts = Counter()
+        self.total_words = 0
 
-        self.counts = {n: defaultdict(Counter) for n in range(1, self.max_n_gram + 1)} # stores [n-gram model][
+        self.counts = {n: defaultdict(Counter) for n in range(1, self.max_n_gram + 1)}
 
         self.prefix_index = {}
         self.non_special_vocab = []

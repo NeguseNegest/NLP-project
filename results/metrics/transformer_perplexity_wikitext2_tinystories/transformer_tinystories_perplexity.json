@@ -1,0 +1,33 @@
+{
+    "dataset": "tinystories",
+    "checkpoint_path": "/content/drive/MyDrive/NLP-project/models/transformer/tinystories/checkpoint_final.pt",
+    "tokenizer_path": "/content/drive/MyDrive/NLP-project/models/transformer/tinystories/tokenizer.json",
+    "test_path": "/content/drive/MyDrive/NLP-project/scr/data/tiny_stories_transformer/tinystories_transformer_test.txt",
+    "max_test_sentences": 1000,
+    "device": "cuda",
+    "batch_size": 32,
+    "block_size": 512,
+    "stride": 512,
+    "metrics": {
+        "total_tokens_evaluated": 221014,
+        "total_negative_log_likelihood": 384022.380859375,
+        "average_nll_loss": 1.7375477610439836,
+        "perplexity": 5.68338929160974,
+        "batch_losses": [
+            1.7455759048461914,
+            1.7936201095581055,
+            1.783333420753479,
+            1.710218906402588,
+            1.683048963546753,
+            1.6853971481323242,
+            1.7461427450180054,
+            1.735241413116455,
+            1.7512836456298828,
+            1.6983027458190918,
+            1.7417620420455933,
+            1.7582192420959473,
+            1.7506330013275146,
+            1.7484573672400898
+        ]
+    }
+}

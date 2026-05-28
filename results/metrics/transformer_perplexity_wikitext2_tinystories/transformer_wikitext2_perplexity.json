@@ -1,0 +1,30 @@
+{
+    "dataset": "wikitext2",
+    "checkpoint_path": "/content/drive/MyDrive/NLP-project/models/transformer/wikitext2/checkpoint_final.pt",
+    "tokenizer_path": "/content/drive/MyDrive/NLP-project/models/transformer/wikitext2/tokenizer.json",
+    "test_path": "/content/drive/MyDrive/NLP-project/scr/data/wikitext_2_transformer/wikitext2_transformer_test.txt",
+    "max_test_sentences": 1000,
+    "device": "cuda",
+    "batch_size": 32,
+    "block_size": 512,
+    "stride": 512,
+    "metrics": {
+        "total_tokens_evaluated": 171455,
+        "total_negative_log_likelihood": 682130.345703125,
+        "average_nll_loss": 3.978480334216704,
+        "perplexity": 53.435767986154886,
+        "batch_losses": [
+            3.9052834510803223,
+            3.849842071533203,
+            4.062230587005615,
+            4.03490686416626,
+            4.384441375732422,
+            3.755420207977295,
+            4.243610858917236,
+            3.8858132362365723,
+            3.506957530975342,
+            4.1185102462768555,
+            4.059780501066973
+        ]
+    }
+}

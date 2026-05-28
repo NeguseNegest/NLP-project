@@ -289,7 +289,7 @@ def parse_args():
     project_root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset", choices=["tinystories", "wikitext2"], default="tinystories")
+    parser.add_argument("--dataset", choices=["tinystories", "wikitext2", "mobile_sms"], default="tinystories")
     parser.add_argument("--project_root", default=str(project_root))
     parser.add_argument("--train_text", default=None)
     parser.add_argument("--val_text", default=None)
@@ -314,6 +314,17 @@ def parse_args():
     return parser.parse_args()
 
 
+def mobile_transformer_data_dir(project_root):
+    candidates = [
+        project_root / "scr/data/mobile_transformers",
+        project_root / "data/mobile_transformers",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
 def main():
     args = parse_args()
     project_root = Path(args.project_root)
@@ -322,13 +333,23 @@ def main():
         data_dir = project_root / "scr/data/wikitext_2_transformer"
         model_dir = project_root / "models/transformer/wikitext2"
         prefix = "wikitext2"
+        default_train = data_dir / f"{prefix}_transformer_train.txt"
+        default_val = data_dir / f"{prefix}_transformer_val.txt"
+    elif args.dataset == "mobile_sms":
+        data_dir = mobile_transformer_data_dir(project_root)
+        model_dir = project_root / "models/transformer/mobile_sms"
+        prefix = "mobile_sms"
+        default_train = data_dir / "train_sms.txt"
+        default_val = data_dir / "validate_sms.txt"
     else:
         data_dir = project_root / "scr/data/tiny_stories_transformer"
         model_dir = project_root / "models/transformer/tinystories"
         prefix = "tinystories"
+        default_train = data_dir / f"{prefix}_transformer_train.txt"
+        default_val = data_dir / f"{prefix}_transformer_val.txt"
 
-    args.train_text = args.train_text or str(data_dir / f"{prefix}_transformer_train.txt")
-    args.val_text = args.val_text or str(data_dir / f"{prefix}_transformer_val.txt")
+    args.train_text = args.train_text or str(default_train)
+    args.val_text = args.val_text or str(default_val)
     args.tokenizer_path = args.tokenizer_path or str(model_dir / "tokenizer.json")
     args.train_bin = args.train_bin or str(model_dir / "train.bin")
     args.val_bin = args.val_bin or str(model_dir / "val.bin")

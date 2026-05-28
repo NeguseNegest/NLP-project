@@ -3,6 +3,7 @@ import sys
 from functools import lru_cache
 from time import perf_counter
 import heapq
+import argparse
 
 import torch
 
@@ -42,11 +43,62 @@ except ImportError as e:
 
 app = Flask(__name__)
 
-BEST_LAMBDAS = {1: 0.0, 2: 0.0, 3: 0.1, 4: 0.9}
+VALID_MODELS = {"ngram", "transformer"}
+VALID_DATASETS = {"tinystories", "wikitext2", "mobile_sms"}
+
+
+def parse_csv_argument(value, valid_values, argument_name):
+    if value is None or value.lower() == "all":
+        return set(valid_values)
+
+    selected = {item.strip().lower() for item in value.split(",") if item.strip()}
+    unknown = selected - set(valid_values)
+
+    if unknown:
+        valid = ", ".join(sorted(valid_values))
+        bad = ", ".join(sorted(unknown))
+        raise ValueError(f"Unknown {argument_name}: {bad}. Valid values: {valid}.")
+
+    return selected
+
+
+def parse_runtime_args():
+    parser = argparse.ArgumentParser(description="Run the word-prediction GUI.")
+    parser.add_argument(
+        "--models",
+        default="all",
+        help="Comma-separated models to load: ngram, transformer, or all. Example: --models ngram",
+    )
+    parser.add_argument(
+        "--datasets",
+        default="all",
+        help="Comma-separated datasets to load: tinystories, wikitext2, mobile_sms, or all. Example: --datasets mobile_sms",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=5000,
+        help="Port for the Flask app.",
+    )
+
+    args, _ = parser.parse_known_args()
+    args.models = parse_csv_argument(args.models, VALID_MODELS, "model")
+    args.datasets = parse_csv_argument(args.datasets, VALID_DATASETS, "dataset")
+    return args
+
+
+ARGS = parse_runtime_args()
+print(f"Selected models: {sorted(ARGS.models)}", flush=True)
+print(f"Selected datasets: {sorted(ARGS.datasets)}", flush=True)
+
+BEST_LAMBDAS_wiki = {1: 0.0, 2: 0.0, 3: 0.1, 4: 0.9}
+
+BEST_LAMBDAS= {1: 0.0, 2: 0.1, 3: 0.7, 4: 0.2}
 
 _NGRAM_PATHS = {
     "tinystories": PROJECT_ROOT / "models" / "ngram" / "Tiny_stories_ngram_model.pkl",
     "wikitext2":   PROJECT_ROOT / "models" / "ngram" / "Wikitext2_ngram_model.pkl",
+    "mobile_sms":  PROJECT_ROOT / "models" / "ngram" / "mobile_sms_ngram_model.pkl",
 }
 
 _TRANSFORMER_PATHS = {
@@ -62,7 +114,23 @@ _TRANSFORMER_PATHS = {
         "ngram_pkl":  PROJECT_ROOT / "models" / "ngram" / "wikitext2_ngram_model.pkl",
         "train_text": PROJECT_ROOT / "scr" / "data" / "wikitext_2_transformer" / "wikitext2_transformer_train.txt",
     },
+    "mobile_sms": {
+        "checkpoint": PROJECT_ROOT / "models" / "transformer" / "mobile_sms" / "checkpoint_final.pt",
+        "tokenizer":  PROJECT_ROOT / "models" / "transformer" / "mobile_sms" / "tokenizer.json",
+        "ngram_pkl":  PROJECT_ROOT / "models" / "ngram" / "mobile_sms_ngram_model.pkl",
+        "train_text": PROJECT_ROOT / "scr" / "data" / "mobile_transformers" / "train_sms.txt",
+    },
 }
+
+if "ngram" not in ARGS.models:
+    _NGRAM_PATHS = {}
+else:
+    _NGRAM_PATHS = {k: v for k, v in _NGRAM_PATHS.items() if k in ARGS.datasets}
+
+if "transformer" not in ARGS.models:
+    _TRANSFORMER_PATHS = {}
+else:
+    _TRANSFORMER_PATHS = {k: v for k, v in _TRANSFORMER_PATHS.items() if k in ARGS.datasets}
 
 PREDICTORS = {"ngram": {}, "transformer": {}}
 
@@ -608,11 +676,13 @@ HTML = """
                             <p class="selector-desc">Language model for word prediction. When spell is on, overridden by the LM row.</p>
                         </div>
                     </div>
+
                     <div class="selector-row">
                         <span class="selector-label">Dataset</span>
                         <div class="toggle-group" id="datasetGroup">
                             <button class="toggle-btn" data-dataset="tinystories">TinyStories</button>
                             <button class="toggle-btn" data-dataset="wikitext2">WikiText-2</button>
+                            <button class="toggle-btn" data-dataset="mobile_sms">Mobile SMS</button>
                         </div>
                     </div>
                     <div class="selector-row">
@@ -727,7 +797,7 @@ HTML = """
     let latestRequestId = 0;
 
     const MODEL_LABELS   = { ngram: "N-gram", transformer: "Transformer" };
-    const DATASET_LABELS = { tinystories: "TinyStories", wikitext2: "WikiText-2" };
+    const DATASET_LABELS = { tinystories: "TinyStories", wikitext2: "WikiText-2", mobile_sms: "Mobile SMS" };
 
     const STRATEGY_META = {
         s1: { max_edit_dist: 1, weight_mode: "uniform" },
@@ -1005,7 +1075,9 @@ HTML = """
     function scheduleFetchSuggestions() {
         updateContextPrefixInstantly();
         if (debounceTimer !== null) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(fetchSuggestionsNow, 70);
+        const params = getSpellParams();
+        const delayMs = params.model === "transformer" ? 350 : 70;
+        debounceTimer = setTimeout(fetchSuggestionsNow, delayMs);
     }
 
     function insertSuggestion(word) {
@@ -1088,13 +1160,12 @@ def suggest():
         "suggestions":     [{"word": w, "score": float(s)} for w, s in suggestions],
     })
 
-
 if __name__ == "__main__":
     print(f"N-gram:      {AVAILABLE['ngram']}")
     print(f"Transformer: {AVAILABLE['transformer']}")
     app.run(
         host="0.0.0.0",
-        port=5000,
+        port=ARGS.port,
         debug=False,
         use_reloader=False,
         threaded=True,

@@ -1,28 +1,5 @@
 """
-Validate spell-correction scoring parameters on a small corrupted validation set.
-
-This script samples clean sentences from the validation split, corrupts only the
-final word, and grid-searches:
-
-    lambda_edit
-    mu_freq
-
-The language-model parameters are not tuned here. For the N-gram model, the
-script uses the already saved best interpolation lambdas by default.
-
-Examples:
-    # Default: N-gram, TinyStories, S2, 100 validation examples
-    python scr/spell_param_validate.py
-
-    # WikiText-2, S3, custom grid
-    python scr/spell_param_validate.py --dataset wikitext2 --strategy s3 \
-        --lambda_edit_grid 0.25,0.5,0.75,1.0 --mu_freq_grid 0,0.05,0.1,0.2
-
-    # Transformer version. This can be slow.
-    python scr/spell_param_validate.py --model transformer --dataset tinystories --strategy s2 --device auto
-
-Outputs:
-    results/metrics/spell_param_validation/
+Validate spell-correction scoring parameters on corrupted validation examples.
 """
 
 import argparse
@@ -77,6 +54,17 @@ DATASET_CONFIGS = {
         "transformer_model_dir": "models/transformer/wikitext2",
         "transformer_train_text": "scr/data/wikitext_2_transformer/wikitext2_transformer_train.txt",
     },
+    "mobile_sms": {
+        "validation_text": "scr/data/mobile_ngram/validate_sms.txt",
+        "ngram_model_candidates": [
+            "models/ngram/mobile_sms_ngram_model.pkl",
+        ],
+        "lambda_candidates": [
+            "results/metrics/best_ngram_lambdas_mobile_sms.json",
+        ],
+        "transformer_model_dir": "models/transformer/mobile_sms",
+        "transformer_train_text": "scr/data/mobile_transformers/train_sms.txt",
+    },
 }
 
 STRATEGY_CONFIGS = {
@@ -99,8 +87,6 @@ STRATEGY_CONFIGS = {
 
 
 class NGramSpellPredictor:
-    """Adapter that makes NGramModel use selected interpolation lambdas."""
-
     def __init__(self, model, lambdas):
         self.model = model
         self.lambdas = lambdas
@@ -608,13 +594,13 @@ def parse_args():
         description="Validate spell-correction lambda_edit and mu_freq on corrupted validation examples."
     )
     parser.add_argument("--model", choices=["ngram", "transformer"], default="ngram")
-    parser.add_argument("--dataset", choices=["tinystories", "wikitext2"], default="tinystories")
+    parser.add_argument("--dataset", choices=list(DATASET_CONFIGS.keys()), default="tinystories")
     parser.add_argument("--strategy", choices=["s1", "s2", "s3"], default="s2")
     parser.add_argument("--num_examples", type=int, default=100)
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--sample_pool_size", type=int, default=5000)
-    parser.add_argument("--lambda_edit_grid", default="0.0,0.25,0.5,0.75,1.0")
-    parser.add_argument("--mu_freq_grid", default="0.0,0.05,0.1,0.2")
+    parser.add_argument("--lambda_edit_grid", default="0.25,0.5,0.75,1.0")
+    parser.add_argument("--mu_freq_grid", default="0.05,0.1,0.2")
     parser.add_argument(
         "--objective",
         choices=["saved_keystroke_ratio", "top_k_accuracy"],

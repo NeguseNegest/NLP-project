@@ -1,20 +1,5 @@
 """
 Evaluate N-gram spell correction on fixed corrupted-word datasets.
-
-This file is intentionally separate from ngram_evaluate.py and ngram_test.py
-because it evaluates misspelled final-word correction rather than clean
-next-word prediction.
-
-Examples:
-    # Run all datasets and all spell strategies
-    python scr/ngram/ngram_spell_evaluate.py
-
-    # Run one dataset and one strategy
-    python scr/ngram/ngram_spell_evaluate.py --dataset tinystories --strategy s1
-
-Outputs:
-    results/metrics/ngram_spell/
-    results/plots/ngram_spell/
 """
 
 import argparse
@@ -75,6 +60,15 @@ DATASET_CONFIGS = {
         ],
         "spell_eval_dir": "scr/data/spell_eval/wikitext2",
     },
+    "mobile_sms": {
+        "model_candidates": [
+            "models/ngram/mobile_sms_ngram_model.pkl",
+        ],
+        "lambda_candidates": [
+            "results/metrics/best_ngram_lambdas_mobile_sms.json",
+        ],
+        "spell_eval_dir": "scr/data/spell_eval/mobile_sms",
+    },
 }
 
 STRATEGY_CONFIGS = {
@@ -112,8 +106,6 @@ EDIT_OPERATIONS = ["deletion", "insertion", "substitution", "transposition"]
 
 
 class NGramSpellPredictor:
-    """Adapter that makes NGramModel use the selected interpolation lambdas."""
-
     def __init__(self, model, lambdas):
         self.model = model
         self.lambdas = lambdas
@@ -730,7 +722,7 @@ def parse_args():
     )
     parser.add_argument(
         "--dataset",
-        choices=["all", "tinystories", "wikitext2"],
+        choices=["all", *DATASET_CONFIGS.keys()],
         default="all",
     )
     parser.add_argument(

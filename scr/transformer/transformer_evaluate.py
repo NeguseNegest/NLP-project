@@ -1,8 +1,10 @@
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
+import torch
 from tqdm import tqdm
 
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -103,6 +105,69 @@ def evaluate(predictor, sentences):
     return results
 
 
+def evaluate_perplexity(predictor, text_path, max_sentences=None):
+    model = predictor.model
+    tokenizer = predictor.tokenizer
+    device = predictor.device
+    block_size = model.config.block_size
+
+    model.eval()
+    total_loss = 0.0
+    total_tokens = 0
+    evaluated_lines = 0
+
+    with open(text_path, "r", encoding="utf-8") as f:
+        for line in tqdm(f, desc="Evaluating transformer perplexity"):
+            line = line.strip()
+            if not line:
+                continue
+
+            _, ids = tokenizer.tokenize(line)
+            if len(ids) < 2:
+                continue
+
+            evaluated_lines += 1
+
+            with torch.inference_mode():
+                for start in range(0, len(ids) - 1, block_size):
+                    chunk = ids[start: start + block_size + 1]
+                    if len(chunk) < 2:
+                        continue
+
+                    x = torch.tensor(
+                        chunk[:-1],
+                        dtype=torch.long,
+                        device=device,
+                    ).unsqueeze(0)
+                    y = torch.tensor(
+                        chunk[1:],
+                        dtype=torch.long,
+                        device=device,
+                    ).unsqueeze(0)
+
+                    logits = model(x)
+                    loss = torch.nn.functional.cross_entropy(
+                        logits.reshape(-1, model.config.vocab_size),
+                        y.reshape(-1),
+                        reduction="sum",
+                    )
+                    total_loss += loss.item()
+                    total_tokens += y.numel()
+
+            if max_sentences and evaluated_lines >= max_sentences:
+                break
+
+    average_loss = total_loss / total_tokens if total_tokens else float("inf")
+    perplexity = math.exp(average_loss) if math.isfinite(average_loss) else float("inf")
+
+    return {
+        "evaluated_lines": evaluated_lines,
+        "evaluated_tokens": total_tokens,
+        "cross_entropy_loss": average_loss,
+        "perplexity": perplexity,
+    }
+
+
 def print_results(results, dataset_name):
     for k in TOP_K_VALUES:
         m = results[k]
@@ -117,11 +182,22 @@ def print_results(results, dataset_name):
         print(f"Top-{k} accuracy      : {m['top_k_accuracy']:.4f}")
 
 
+def print_perplexity_results(metrics):
+    print()
+    print("=" * 60)
+    print("Transformer perplexity")
+    print("=" * 60)
+    print(f"Evaluated lines       : {metrics['evaluated_lines']:,}")
+    print(f"Evaluated tokens      : {metrics['evaluated_tokens']:,}")
+    print(f"Cross-entropy loss    : {metrics['cross_entropy_loss']:.4f}")
+    print(f"Perplexity            : {metrics['perplexity']:.4f}")
+
+
 def parse_args():
     project_root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset", choices=["tinystories", "wikitext2"], default="tinystories")
+    parser.add_argument("--dataset", choices=["tinystories", "wikitext2", "mobile_sms"], default="tinystories")
     parser.add_argument("--project_root", default=str(project_root))
     parser.add_argument("--checkpoint_path", default=None)
     parser.add_argument("--tokenizer_path", default=None)
@@ -130,9 +206,21 @@ def parse_args():
     parser.add_argument("--ngram_model_path", default=None)
     parser.add_argument("--vocab_train_text", default=None)
     parser.add_argument("--max_test_sentences", type=int, default=0)
+    parser.add_argument("--skip_perplexity", action="store_true")
     parser.add_argument("--device", default="cpu")
 
     return parser.parse_args()
+
+
+def mobile_transformer_data_dir(project_root):
+    candidates = [
+        project_root / "scr/data/mobile_transformers",
+        project_root / "data/mobile_transformers",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
 
 
 def main():
@@ -145,6 +233,13 @@ def main():
         default_results = project_root / "results/metrics/transformer_wikitext2_test_results.json"
         default_ngram = project_root / "models/ngram/wikitext2_ngram_model.pkl"
         default_train = project_root / "scr/data/wikitext_2_transformer/wikitext2_transformer_train.txt"
+    elif args.dataset == "mobile_sms":
+        data_dir = mobile_transformer_data_dir(project_root)
+        model_dir = project_root / "models/transformer/mobile_sms"
+        default_test = data_dir / "test_sms.txt"
+        default_results = project_root / "results/metrics/transformer_mobile_sms_test_results.json"
+        default_ngram = project_root / "models/ngram/mobile_sms_ngram_model.pkl"
+        default_train = data_dir / "train_sms.txt"
     else:
         model_dir = project_root / "models/transformer/tinystories"
         default_test = project_root / "scr/data/tiny_stories_transformer/tinystories_transformer_test.txt"
@@ -185,6 +280,15 @@ def main():
     results = evaluate(predictor, sentences)
     print_results(results, args.dataset)
 
+    perplexity_metrics = None
+    if not args.skip_perplexity:
+        perplexity_metrics = evaluate_perplexity(
+            predictor,
+            test_path,
+            max_sentences=max_sentences,
+        )
+        print_perplexity_results(perplexity_metrics)
+
     output = {
         "dataset": args.dataset,
         "checkpoint_path": checkpoint_path,
@@ -192,6 +296,7 @@ def main():
         "top_k_values": TOP_K_VALUES,
         "max_test_sentences": max_sentences,
         "results_by_top_k": results,
+        "perplexity_metrics": perplexity_metrics,
     }
     Path(results_path).parent.mkdir(parents=True, exist_ok=True)
     with open(results_path, "w", encoding="utf-8") as f:

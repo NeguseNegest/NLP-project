@@ -3,6 +3,9 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 
 _log_file = None
 
@@ -11,9 +14,7 @@ def log(*args, **kwargs):
     if _log_file is not None:
         print(*args, **kwargs, file=_log_file, flush=True)
 
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
+
 
 CURRENT_DIR = Path(__file__).resolve().parent
 SRC_DIR = CURRENT_DIR.parent
@@ -39,6 +40,61 @@ ARCH_GRID = [
 
 STRIDE_LEVELS = [8, 32, 64]
 TOP_K_VALUES  = [1, 2, 3, 4]
+
+
+def _split_csv(value):
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def resolve_arch_grid(archs_arg):
+    if not archs_arg or archs_arg.strip().lower() == "all":
+        return ARCH_GRID
+
+    arch_by_name = {arch["name"]: arch for arch in ARCH_GRID}
+    selected = []
+    unknown = []
+    seen = set()
+
+    for name in _split_csv(archs_arg.lower()):
+        if name not in arch_by_name:
+            unknown.append(name)
+            continue
+        if name in seen:
+            continue
+        selected.append(arch_by_name[name])
+        seen.add(name)
+
+    if unknown:
+        valid = ", ".join(arch_by_name)
+        raise ValueError(f"unknown arch name(s): {', '.join(unknown)}. Valid choices: {valid}")
+    if not selected:
+        raise ValueError("--archs did not contain any architecture names")
+
+    return selected
+
+
+def resolve_stride_levels(strides_arg):
+    if not strides_arg or strides_arg.strip().lower() == "all":
+        return STRIDE_LEVELS
+
+    selected = []
+    seen = set()
+    for value in _split_csv(strides_arg):
+        try:
+            stride = int(value)
+        except ValueError as exc:
+            raise ValueError(f"invalid stride value: {value}") from exc
+        if stride <= 0:
+            raise ValueError(f"stride must be positive, got {stride}")
+        if stride in seen:
+            continue
+        selected.append(stride)
+        seen.add(stride)
+
+    if not selected:
+        raise ValueError("--strides did not contain any stride values")
+
+    return selected
 
 def train_model(arch, stride, args, device, train_bin, val_loader, tokenizer, checkpoint_path):
     config = Config(
@@ -98,15 +154,18 @@ def train_model(arch, stride, args, device, train_bin, val_loader, tokenizer, ch
         if iteration % 100 == 0:
             model.eval()
             with torch.no_grad():
-                v_loss = sum(
-                    criterion(
+                v_loss = 0.0
+                val_batches = 0
+                for batch_idx, (vx, vy) in enumerate(val_loader):
+                    if args.max_val_batches > 0 and batch_idx >= args.max_val_batches:
+                        break
+                    v_loss += criterion(
                         model(vx.to(device)).reshape(-1, config.vocab_size),
                         vy.to(device).reshape(-1),
                     ).item()
-                    for vx, vy in val_loader
-                )
+                    val_batches += 1
 
-            final_val_loss = v_loss / len(val_loader)
+            final_val_loss = v_loss / max(1, val_batches)
 
             if final_val_loss < best_val_loss:
                 best_val_loss = final_val_loss
@@ -148,20 +207,58 @@ def parse_args():
     project_root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset",      choices=["tinystories", "wikitext2"], default="wikitext2")
+    parser.add_argument("--dataset",      choices=["tinystories", "wikitext2", "mobile_sms"], default="wikitext2")
     parser.add_argument("--project_root", default=str(project_root))
+    parser.add_argument("--train_text",   default=None)
+    parser.add_argument("--val_text",     default=None)
+    parser.add_argument("--test_text",    default=None)
+    parser.add_argument("--eval_text",    default=None,
+                        help="Text split used for top-k grid-search evaluation. Defaults to validation text.")
+    parser.add_argument("--model_dir",    default=None)
+    parser.add_argument("--ngram_model_path", default=None)
+    parser.add_argument("--vocab_train_text", default=None)
+    parser.add_argument("--tokenizer_path", default=None)
+    parser.add_argument("--train_bin",    default=None)
+    parser.add_argument("--val_bin",      default=None)
+    parser.add_argument("--results_path", default=None)
+    parser.add_argument("--log_path",     default=None)
+    parser.add_argument("--archs",        default=None,
+                        help="Comma-separated architecture names to run, e.g. small,default. Defaults to all.")
+    parser.add_argument("--strides",      default=None,
+                        help="Comma-separated stride values to run, e.g. 8,32. Defaults to all.")
     parser.add_argument("--max_iters",    type=int,   default=10000)
+    parser.add_argument("--max_val_batches", type=int, default=0,
+                        help="Limit validation-loss batches per checkpoint check. Use 0 for all.")
     parser.add_argument("--block_size",   type=int,   default=512)
     parser.add_argument("--batch_size",   type=int,   default=8)
     parser.add_argument("--dropout",      type=float, default=0.1)
     parser.add_argument("--lr",           type=float, default=5e-4)
     parser.add_argument("--weight_decay", type=float, default=1e-6)
     parser.add_argument("--vocab_size",   type=int,   default=5000)
+    parser.add_argument("--max_tokenizer_lines", type=int, default=None)
     parser.add_argument("--max_eval_sentences", type=int, default=200,
-                        help="Test sentences used for quick evaluation per run")
+                        help="Validation/eval sentences used for quick top-k evaluation per run")
     parser.add_argument("--device",       default=None)
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    try:
+        args.arch_grid = resolve_arch_grid(args.archs)
+        args.stride_levels = resolve_stride_levels(args.strides)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    return args
+
+
+def mobile_transformer_data_dir(project_root):
+    candidates = [
+        project_root / "scr/data/mobile_transformers",
+        project_root / "data/mobile_transformers",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
 
 
 def main():
@@ -177,21 +274,37 @@ def main():
         model_dir  = project_root / "models/transformer/wikitext2"
         ngram_pkl  = project_root / "models/ngram/wikitext2_ngram_model.pkl"
         prefix     = "wikitext2"
+        train_text = data_dir / f"{prefix}_transformer_train.txt"
+        val_text = data_dir / f"{prefix}_transformer_val.txt"
+        test_text = data_dir / f"{prefix}_transformer_test.txt"
+    elif args.dataset == "mobile_sms":
+        data_dir   = mobile_transformer_data_dir(project_root)
+        model_dir  = project_root / "models/transformer/mobile_sms"
+        ngram_pkl  = project_root / "models/ngram/mobile_sms_ngram_model.pkl"
+        prefix     = "mobile_sms"
+        train_text = data_dir / "train_sms.txt"
+        val_text = data_dir / "validate_sms.txt"
+        test_text = data_dir / "test_sms.txt"
     else:
         data_dir   = project_root / "scr/data/tiny_stories_transformer"
         model_dir  = project_root / "models/transformer/tinystories"
         ngram_pkl  = project_root / "models/ngram/Tiny_stories_ngram_model.pkl"
         prefix     = "tinystories"
+        train_text = data_dir / f"{prefix}_transformer_train.txt"
+        val_text = data_dir / f"{prefix}_transformer_val.txt"
+        test_text = data_dir / f"{prefix}_transformer_test.txt"
 
-    train_text     = data_dir  / f"{prefix}_transformer_train.txt"
-    val_text       = data_dir  / f"{prefix}_transformer_val.txt"
-    test_text      = data_dir  / f"{prefix}_transformer_test.txt"
-    tokenizer_path = model_dir / "tokenizer.json"
-    train_bin      = model_dir / "train.bin"
-    val_bin        = model_dir / "val.bin"
+    model_dir = Path(args.model_dir) if args.model_dir else model_dir
+    train_text = Path(args.train_text) if args.train_text else train_text
+    val_text = Path(args.val_text) if args.val_text else val_text
+    test_text = Path(args.test_text) if args.test_text else test_text
+    eval_text = Path(args.eval_text) if args.eval_text else val_text
+    tokenizer_path = Path(args.tokenizer_path) if args.tokenizer_path else model_dir / "tokenizer.json"
+    train_bin = Path(args.train_bin) if args.train_bin else model_dir / "train.bin"
+    val_bin = Path(args.val_bin) if args.val_bin else model_dir / "val.bin"
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    log_path = project_root / f"results/metrics/{prefix}_transformer_grid_search.log"
+    log_path = Path(args.log_path) if args.log_path else project_root / f"results/metrics/{prefix}_transformer_grid_search.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     _log_file = open(log_path, "w", encoding="utf-8")
     log(f"Grid search started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -207,13 +320,20 @@ def main():
 
     log(f"Dataset : {args.dataset}")
     log(f"Device  : {device}")
+    log(f"Train   : {train_text}")
+    log(f"Val     : {val_text}")
+    log(f"Eval    : {eval_text}")
     log(f"Max iter: {args.max_iters}")
-    log(f"Archs   : {[a['name'] for a in ARCH_GRID]}")
-    log(f"Strides : {STRIDE_LEVELS}")
-    log(f"Eval on : {args.max_eval_sentences} test sentences per run")
+    log(f"Max validation-loss batches: {args.max_val_batches if args.max_val_batches > 0 else 'all'}")
+    log(f"Archs   : {[a['name'] for a in args.arch_grid]}")
+    log(f"Strides : {args.stride_levels}")
+    log(f"Eval on : {args.max_eval_sentences} validation/eval sentences per run")
 
     tokenizer = train_or_load_tokenizer(
-        train_text, tokenizer_path, vocab_size=args.vocab_size, max_tokenizer_lines=None
+        train_text,
+        tokenizer_path,
+        vocab_size=args.vocab_size,
+        max_tokenizer_lines=args.max_tokenizer_lines,
     )
     tokenize_to_bin(train_text, tokenizer, train_bin)
     tokenize_to_bin(val_text,   tokenizer, val_bin)
@@ -226,14 +346,20 @@ def main():
         pin_memory=(device == "cuda"), num_workers=2,
     )
 
-    vocab_source = str(ngram_pkl) if ngram_pkl.exists() else str(train_text)
-    test_sentences = load_sentences(str(test_text), max_sentences=args.max_eval_sentences)
-    log(f"\nLoaded {len(test_sentences)} test sentences for evaluation.")
+    if args.ngram_model_path:
+        vocab_source = str(args.ngram_model_path)
+    elif args.vocab_train_text:
+        vocab_source = str(args.vocab_train_text)
+    else:
+        vocab_source = str(ngram_pkl) if ngram_pkl.exists() else str(train_text)
+
+    eval_sentences = load_sentences(str(eval_text), max_sentences=args.max_eval_sentences)
+    log(f"\nLoaded {len(eval_sentences)} validation/eval sentences for grid-search evaluation.")
 
     all_results = []
 
-    for arch in ARCH_GRID:
-        for stride in STRIDE_LEVELS:
+    for arch in args.arch_grid:
+        for stride in args.stride_levels:
             checkpoint_path = model_dir / f"{prefix}_grid_{arch['name']}_s{stride}_checkpoint.pt"
 
             model, config, n_params, iters, val_loss = train_model(
@@ -243,9 +369,9 @@ def main():
             if device == "cuda":
                 torch.cuda.empty_cache()
 
-            log(f"{datetime.now().strftime('%X')} Running evaluation on {len(test_sentences)} sentences...")
+            log(f"{datetime.now().strftime('%X')} Running evaluation on {len(eval_sentences)} sentences...")
             eval_results = quick_evaluate(
-                checkpoint_path, tokenizer_path, test_sentences, vocab_source, device
+                checkpoint_path, tokenizer_path, eval_sentences, vocab_source, device
             )
 
             row = {
@@ -295,11 +421,24 @@ def main():
             f"{r['eval']['1']['saved_keystroke_ratio']:>9.4f}"
         )
 
-    results_path = project_root / f"results/metrics/{prefix}_transformer_grid_search.json"
+    results_path = Path(args.results_path) if args.results_path else project_root / f"results/metrics/{prefix}_transformer_grid_search.json"
     results_path.parent.mkdir(parents=True, exist_ok=True)
     with open(results_path, "w") as f:
         json.dump(
-            {"dataset": args.dataset, "max_iters": args.max_iters, "runs": all_results},
+            {
+                "dataset": args.dataset,
+                "train_text": str(train_text),
+                "val_text": str(val_text),
+                "eval_text": str(eval_text),
+                "max_iters": args.max_iters,
+                "block_size": args.block_size,
+                "archs": [arch["name"] for arch in args.arch_grid],
+                "strides": args.stride_levels,
+                "max_eval_sentences": args.max_eval_sentences,
+                "max_val_batches": args.max_val_batches,
+                "selection_metric": "eval.1.top_k_accuracy",
+                "runs": all_results,
+            },
             f, indent=4,
         )
     log(f"\nFull results saved to {results_path}")
