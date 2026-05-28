@@ -130,8 +130,9 @@ The result is high because Mobile SMS sentences are short and repetitive compare
 |---|---:|---:|---:|
 | TinyStories | 221,014 | 1.7375 | 5.68 |
 | WikiText-2 | 171,455 | 3.9785 | 53.44 |
+| Mobile SMS | 1,161 | 4.1841 | 65.63 |
 
-TinyStories has much lower perplexity, which matches the word-prediction and spell-correction results: it is a simpler, more regular dataset than WikiText-2.
+TinyStories has much lower perplexity, which matches the word-prediction and spell-correction results: it is a simpler, more regular dataset than WikiText-2. The Mobile SMS perplexity was computed on 100 test sentences, so it should be interpreted as a smaller sample.
 
 ---
 
@@ -631,4 +632,3 @@ The best validation settings were:
 | TinyStories | S3 | 1.0 | 0.05 | 90.00% | 51.95% |
 | WikiText-2 | S3 | 1.0 | 0.20 | 71.88% | 27.30% |
 | Mobile SMS | S3 | 1.0 | 0.05 | 90.00% | 32.48% |
-
