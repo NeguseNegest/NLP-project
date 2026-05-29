@@ -1,0 +1,55 @@
+{
+    "dataset": "tinystories",
+    "checkpoint_path": "/content/NLP-project/models/transformer/tinystories/checkpoint_final.pt",
+    "tokenizer_path": "/content/NLP-project/models/transformer/tinystories/tokenizer.json",
+    "test_path": "/content/NLP-project/scr/data/tiny_stories_transformer/tinystories_transformer_test.txt",
+    "top_k_values": [
+        1,
+        2,
+        3,
+        4
+    ],
+    "max_test_sentences": 1000,
+    "test_sentences": 1000,
+    "word_vocab_size": 10591,
+    "pretokenized_words": 10591,
+    "checkpoint_epoch": 0,
+    "checkpoint_iteration": 344500,
+    "evaluation_runtime": "47:51",
+    "results_by_top_k": {
+        "1": {
+            "top_k": 1,
+            "total_words": 178992,
+            "total_characters": 697986,
+            "saved_keystrokes": 498570,
+            "saved_keystroke_ratio": 0.7142979945156493,
+            "top_k_accuracy": 0.9544
+        },
+        "2": {
+            "top_k": 2,
+            "total_words": 178992,
+            "total_characters": 697986,
+            "saved_keystrokes": 521545,
+            "saved_keystroke_ratio": 0.7472141275039901,
+            "top_k_accuracy": 0.9673
+        },
+        "3": {
+            "top_k": 3,
+            "total_words": 178992,
+            "total_characters": 697986,
+            "saved_keystrokes": 535458,
+            "saved_keystroke_ratio": 0.7671471920640242,
+            "top_k_accuracy": 0.9718
+        },
+        "4": {
+            "top_k": 4,
+            "total_words": 178992,
+            "total_characters": 697986,
+            "saved_keystrokes": 544426,
+            "saved_keystroke_ratio": 0.7799955873040434,
+            "top_k_accuracy": 0.9755
+        }
+    },
+    "perplexity_metrics": null,
+    "notes": "Created from copied evaluation output. Exact top_k_correct_words were not printed in the source output; top_k_accuracy values are the rounded values shown by the run."
+}
