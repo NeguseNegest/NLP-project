@@ -1,5 +1,6 @@
 import math
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 
@@ -17,6 +18,19 @@ class SelfAttention(nn.Module):
             self.register_buffer("mask", causal_mask)
 
     def compute_attention(self, q, k, v):
+        if hasattr(F, "scaled_dot_product_attention"):
+            try:
+                return F.scaled_dot_product_attention(
+                    q,
+                    k,
+                    v,
+                    dropout_p=0.0,
+                    is_causal=self.is_causal,
+                    scale=1.0 / math.sqrt(self.vector_dim),
+                )
+            except TypeError:
+                pass
+
         attn_scores = q @ k.transpose(-2, -1) / math.sqrt(self.vector_dim)
         if self.is_causal and hasattr(self, "mask"):
             t = q.size(-2)

@@ -1,0 +1,51 @@
+{
+    "dataset": "wikitext2",
+    "checkpoint_path": "models/transformer/wikitext2/checkpoint_final.pt",
+    "test_path": "scr/data/wikitext_2_transformer/wikitext2_transformer_test.txt",
+    "top_k_values": [
+        1,
+        2,
+        3,
+        4
+    ],
+    "max_test_sentences": 100,
+    "results_by_top_k": {
+        "1": {
+            "top_k": 1,
+            "total_words": 10633,
+            "total_characters": 48089,
+            "saved_keystrokes": 19738,
+            "saved_keystroke_ratio": 0.4104472956393354,
+            "top_k_correct_words": 9511,
+            "top_k_accuracy": 0.8944794507664817
+        },
+        "2": {
+            "top_k": 2,
+            "total_words": 10633,
+            "total_characters": 48089,
+            "saved_keystrokes": 25287,
+            "saved_keystroke_ratio": 0.525837509617584,
+            "top_k_correct_words": 9872,
+            "top_k_accuracy": 0.9284303583184426
+        },
+        "3": {
+            "top_k": 3,
+            "total_words": 10633,
+            "total_characters": 48089,
+            "saved_keystrokes": 27832,
+            "saved_keystroke_ratio": 0.578760215433883,
+            "top_k_correct_words": 9967,
+            "top_k_accuracy": 0.9373648076742218
+        },
+        "4": {
+            "top_k": 4,
+            "total_words": 10633,
+            "total_characters": 48089,
+            "saved_keystrokes": 29400,
+            "saved_keystroke_ratio": 0.6113664247541017,
+            "top_k_correct_words": 9998,
+            "top_k_accuracy": 0.9402802595692655
+        }
+    },
+    "perplexity_metrics": null
+}

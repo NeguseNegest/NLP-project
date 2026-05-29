@@ -111,6 +111,19 @@ The Mobile SMS transformer grid search used `block_size=128`, `vocab_size=5000`,
 
 The best top-1 grid-search score came from the default transformer with stride 32. The default stride-8 model had the same top-3 accuracy and a higher top-3 saved-keystroke ratio, so it is also a reasonable final-training choice.
 
+### WikiText-2 transformer test sample
+
+The saved transformer WikiText-2 word-prediction result file evaluates 100 test sentences from `scr/data/wikitext_2_transformer/wikitext2_transformer_test.txt`.
+
+| Top-k | Top-k accuracy | Saved keystroke ratio | Saved keystrokes |
+|---:|---:|---:|---:|
+| 1 | 89.45% | 41.04% | 19,738 |
+| 2 | 92.84% | 52.58% | 25,287 |
+| 3 | 93.74% | 57.88% | 27,832 |
+| 4 | 94.03% | 61.14% | 29,400 |
+
+This run evaluated 10,633 target words and 48,089 target characters. Perplexity was skipped for this word-prediction run; the separate WikiText-2 perplexity result is reported below.
+
 ### Mobile SMS transformer test sample
 
 The saved transformer Mobile SMS word-prediction result file evaluates 100 test sentences.
