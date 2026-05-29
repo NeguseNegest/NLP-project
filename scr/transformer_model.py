@@ -1,6 +1,4 @@
 import heapq
-import math
-import os
 import pickle
 import sys
 from dataclasses import dataclass
@@ -132,7 +130,6 @@ class TransformerPredictor:
         self._logits_cache_probs = None
         self._full_score_cache_key = None
         self._full_rank_cache = None
-        self._multi_chunk_limit = None
 
     def load_word_vocab_from_ngram(self, ngram_model_path):
         ngram_dir = str(Path(ngram_model_path).resolve().parents[2] / "scr" / "ngram")
@@ -198,13 +195,6 @@ class TransformerPredictor:
             return []
 
         context_state = self._context_state(context)
-        if (
-            context_state[0] == "model"
-            and os.environ.get("TRANSFORMER_DISABLE_TOPK_PRUNE") != "1"
-        ):
-            ranked = self._predict_topk_pruned(candidates, top_k, context_state)
-            return list(ranked) if include_scores else [w for w, _ in ranked]
-
         use_full_rank_cache = (
             context_state[0] == "model"
             and self._full_score_cache_key == context_state
@@ -257,65 +247,6 @@ class TransformerPredictor:
                     break
         return ranked
 
-    def _predict_topk_pruned(self, candidates, top_k, context_state):
-        if top_k <= 0:
-            return []
-
-        _, context_ids = context_state
-        context_ids = list(context_ids)
-        probs = self._next_token_probs(context_ids)
-        vocab_size = len(probs)
-
-        scored = []
-        multi_items = []
-
-        for word in candidates:
-            toks = self._word_tokens.get(word, [0])
-            first_tok = toks[0]
-            upper_bound = probs[first_tok].item() if first_tok < vocab_size else 0.0
-            if len(toks) == 1:
-                scored.append((word, upper_bound))
-            else:
-                multi_items.append((word, toks, upper_bound))
-
-        multi_items.sort(key=lambda item: -item[2])
-
-        ranked = self._rank_items(scored, top_k) if scored else []
-        score_floor = min((score for _, score in ranked), default=-math.inf)
-        if len(ranked) < top_k:
-            score_floor = -math.inf
-
-        item_start = 0
-        while item_start < len(multi_items):
-            if len(ranked) >= top_k and multi_items[item_start][2] < score_floor:
-                break
-
-            remaining = multi_items[item_start:]
-            lookahead = remaining[:4096]
-            target_len_guess = min(
-                len(context_ids) + max(len(toks) for _, toks, _ in lookahead) - 1,
-                self.model.config.block_size,
-            )
-            chunk_size = self._candidate_chunk_size(target_len_guess)
-
-            chunk = []
-            for word, toks, upper_bound in remaining[:chunk_size]:
-                if len(ranked) >= top_k and upper_bound < score_floor:
-                    break
-                chunk.append((word, toks))
-
-            if not chunk:
-                break
-
-            scored.extend(self._score_multi_token_items(context_ids, chunk))
-            ranked = self._rank_items(scored, top_k)
-            score_floor = min((score for _, score in ranked), default=-math.inf)
-            if len(ranked) < top_k:
-                score_floor = -math.inf
-            item_start += len(chunk)
-
-        return self._rank_items(scored, top_k)
-
     def predict_interpolated(self, context, prefix="", top_k=5, lambdas=None, include_scores=True):
         return self.predict(context, prefix, top_k, include_scores)
 
@@ -355,178 +286,13 @@ class TransformerPredictor:
             return [1.0 / len(candidates)] * len(candidates)
 
         context_ids = list(context_ids)
-        ctx_len = len(context_ids)
-        block_size = self.model.config.block_size
+        probs = self._next_token_probs(context_ids)
+        vocab_size = len(probs)
 
-        word_toks_list = [self._word_tokens.get(w, [0]) for w in candidates]
+        scores = []
+        for word in candidates:
+            toks = self._word_tokens.get(word, [0])
+            tid = toks[0]
+            scores.append(probs[tid].item() if tid < vocab_size else 0.0)
 
-        single_indices = [i for i, toks in enumerate(word_toks_list) if len(toks) == 1]
-        multi_indices  = [i for i, toks in enumerate(word_toks_list) if len(toks) > 1]
-
-        all_scores = [0.0] * len(candidates)
-
-        if single_indices:
-            probs = self._next_token_probs(context_ids)
-            vocab_size = len(probs)
-            for i in single_indices:
-                tid = word_toks_list[i][0]
-                all_scores[i] = probs[tid].item() if tid < vocab_size else 0.0
-
-        if multi_indices:
-            chunk_start = 0
-            while chunk_start < len(multi_indices):
-                remaining = multi_indices[chunk_start:]
-                lookahead = remaining[:4096]
-                target_len_guess = min(
-                    ctx_len + max(len(word_toks_list[i]) for i in lookahead) - 1,
-                    block_size,
-                )
-                chunk_size = self._candidate_chunk_size(target_len_guess)
-
-                while True:
-                    chunk_idx = remaining[:chunk_size]
-                    chunk_toks = [word_toks_list[i] for i in chunk_idx]
-
-                    try:
-                        score_probs = self._score_multi_token_chunk(
-                            context_ids=context_ids,
-                            ctx_len=ctx_len,
-                            block_size=block_size,
-                            chunk_idx=chunk_idx,
-                            chunk_toks=chunk_toks,
-                        )
-                        break
-                    except RuntimeError as exc:
-                        if "out of memory" not in str(exc).lower():
-                            raise
-                        if self.device.type == "cuda":
-                            torch.cuda.empty_cache()
-                        if chunk_size == 1:
-                            raise
-                        chunk_size = max(1, chunk_size // 2)
-                        self._multi_chunk_limit = chunk_size
-
-                for orig_i, score in zip(chunk_idx, score_probs):
-                    all_scores[orig_i] = score
-
-                chunk_start += len(chunk_idx)
-
-        return all_scores
-
-    def _candidate_chunk_size(self, target_len):
-        if self.device.type == "cuda":
-            max_chunk = 4096
-            max_attention_bytes = 8 * 1024 ** 3
-        elif self.device.type == "mps":
-            max_chunk = 512
-            max_attention_bytes = 256 * 1024 ** 2
-        else:
-            max_chunk = 256
-            max_attention_bytes = 128 * 1024 ** 2
-
-        if self._multi_chunk_limit is not None:
-            max_chunk = min(max_chunk, self._multi_chunk_limit)
-        env_limit = os.environ.get("TRANSFORMER_CANDIDATE_CHUNK_LIMIT")
-        if env_limit:
-            max_chunk = min(max_chunk, max(1, int(env_limit)))
-
-        n_heads = max(1, self.model.config.number_of_attention_heads)
-        bytes_per_score = 4
-        denom = max(1, n_heads * target_len * target_len * bytes_per_score)
-        return max(1, min(max_chunk, int(max_attention_bytes // denom)))
-
-    def _score_multi_token_items(self, context_ids, items):
-        if not items:
-            return []
-
-        ctx_len = len(context_ids)
-        block_size = self.model.config.block_size
-        scored = []
-        item_start = 0
-
-        while item_start < len(items):
-            remaining = items[item_start:]
-            lookahead = remaining[:4096]
-            target_len_guess = min(
-                ctx_len + max(len(toks) for _, toks in lookahead) - 1,
-                block_size,
-            )
-            chunk_size = self._candidate_chunk_size(target_len_guess)
-
-            while True:
-                chunk_items = remaining[:chunk_size]
-                chunk_toks = [toks for _, toks in chunk_items]
-
-                try:
-                    score_probs = self._score_multi_token_chunk(
-                        context_ids=context_ids,
-                        ctx_len=ctx_len,
-                        block_size=block_size,
-                        chunk_idx=list(range(len(chunk_items))),
-                        chunk_toks=chunk_toks,
-                    )
-                    break
-                except RuntimeError as exc:
-                    if "out of memory" not in str(exc).lower():
-                        raise
-                    if self.device.type == "cuda":
-                        torch.cuda.empty_cache()
-                    if chunk_size == 1:
-                        raise
-                    chunk_size = max(1, chunk_size // 2)
-                    self._multi_chunk_limit = chunk_size
-
-            scored.extend(
-                (word, score)
-                for (word, _), score in zip(chunk_items, score_probs)
-            )
-            item_start += len(chunk_items)
-
-        return scored
-
-    def _score_multi_token_chunk(self, context_ids, ctx_len, block_size, chunk_idx, chunk_toks):
-        max_word_len = max(len(toks) for toks in chunk_toks)
-        target_len = min(ctx_len + max_word_len - 1, block_size)
-
-        batch = []
-        for toks in chunk_toks:
-            inp = (context_ids + list(toks[:-1]))[-block_size:]
-            inp = inp + [0] * max(0, target_len - len(inp))
-            batch.append(inp[:target_len])
-
-        x = torch.tensor(batch, dtype=torch.long, device=self.device)
-        row_ids = []
-        pos_ids = []
-        token_ids = []
-        candidate_ids = []
-        for k, toks in enumerate(chunk_toks):
-            for j, tok_id in enumerate(toks):
-                row_ids.append(k)
-                pos_ids.append(min(ctx_len - 1 + j, target_len - 1))
-                token_ids.append(tok_id)
-                candidate_ids.append(k)
-
-        with torch.inference_mode():
-            h = self.model.hidden(x)
-            row_t = torch.tensor(row_ids, dtype=torch.long, device=self.device)
-            pos_t = torch.tensor(pos_ids, dtype=torch.long, device=self.device)
-            tok_t = torch.tensor(token_ids, dtype=torch.long, device=self.device)
-            cand_t = torch.tensor(candidate_ids, dtype=torch.long, device=self.device)
-
-            selected_h = h[row_t, pos_t, :]
-            selected_logits = self.model.final(selected_h)
-            vocab_size = selected_logits.shape[-1]
-            safe_tok_t = tok_t.clamp(0, vocab_size - 1)
-            token_log_p = torch.log_softmax(selected_logits, dim=-1)[
-                torch.arange(safe_tok_t.numel(), device=self.device), safe_tok_t
-            ]
-            invalid = (tok_t < 0) | (tok_t >= vocab_size)
-            token_log_p = torch.where(
-                invalid,
-                torch.full_like(token_log_p, -20.0),
-                token_log_p,
-            )
-
-            score_sums = torch.zeros(len(chunk_idx), dtype=token_log_p.dtype, device=self.device)
-            score_sums.index_add_(0, cand_t, token_log_p)
-            return torch.exp(score_sums).detach().cpu().tolist()
+        return scores
