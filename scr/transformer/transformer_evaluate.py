@@ -231,7 +231,7 @@ def main():
         model_dir = project_root / "models/transformer/wikitext2"
         default_test = project_root / "scr/data/wikitext_2_transformer/wikitext2_transformer_test.txt"
         default_results = project_root / "results/metrics/transformer_wikitext2_test_results.json"
-        default_ngram = project_root / "models/ngram/wikitext2_ngram_model.pkl"
+        default_ngram = project_root / "models/ngram/Wikitext2_ngram_model.pkl"
         default_train = project_root / "scr/data/wikitext_2_transformer/wikitext2_transformer_train.txt"
     elif args.dataset == "mobile_sms":
         data_dir = mobile_transformer_data_dir(project_root)

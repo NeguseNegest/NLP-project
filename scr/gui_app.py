@@ -77,8 +77,13 @@ def parse_runtime_args():
     parser.add_argument(
         "--port",
         type=int,
-        default=5000,
+        default=8000,
         help="Port for the Flask app.",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host for the Flask app. Use 0.0.0.0 when exposing it from Colab or a remote VM.",
     )
 
     args, _ = parser.parse_known_args()
@@ -91,9 +96,17 @@ ARGS = parse_runtime_args()
 print(f"Selected models: {sorted(ARGS.models)}", flush=True)
 print(f"Selected datasets: {sorted(ARGS.datasets)}", flush=True)
 
-BEST_LAMBDAS_wiki = {1: 0.0, 2: 0.0, 3: 0.1, 4: 0.9}
+BEST_LAMBDAS = {
+    "tinystories": {1: 0.0, 2: 0.0, 3: 0.1, 4: 0.9},
+    "wikitext2":   {1: 0.0, 2: 0.1, 3: 0.9, 4: 0.0},
+    "mobile_sms":  {1: 0.0, 2: 0.1, 3: 0.7, 4: 0.2},
+}
 
-BEST_LAMBDAS= {1: 0.0, 2: 0.1, 3: 0.7, 4: 0.2}
+SPELL_PARAMS = {
+    "tinystories": {"lambda_edit": 1.0, "mu_freq": 0.05},
+    "wikitext2":   {"lambda_edit": 1.0, "mu_freq": 0.20},
+    "mobile_sms":  {"lambda_edit": 1.0, "mu_freq": 0.05},
+}
 
 _NGRAM_PATHS = {
     "tinystories": PROJECT_ROOT / "models" / "ngram" / "Tiny_stories_ngram_model.pkl",
@@ -111,7 +124,7 @@ _TRANSFORMER_PATHS = {
     "wikitext2": {
         "checkpoint": PROJECT_ROOT / "models" / "transformer" / "wikitext2" / "checkpoint_final.pt",
         "tokenizer":  PROJECT_ROOT / "models" / "transformer" / "wikitext2" / "tokenizer.json",
-        "ngram_pkl":  PROJECT_ROOT / "models" / "ngram" / "wikitext2_ngram_model.pkl",
+        "ngram_pkl":  PROJECT_ROOT / "models" / "ngram" / "Wikitext2_ngram_model.pkl",
         "train_text": PROJECT_ROOT / "scr" / "data" / "wikitext_2_transformer" / "wikitext2_transformer_train.txt",
     },
     "mobile_sms": {
@@ -178,18 +191,22 @@ _SPELL_CORRECTORS = {}
 def get_spell_corrector(model_key, dataset_key, weight_mode, max_edit_dist):
     k = (model_key, dataset_key, weight_mode, max_edit_dist)
     if k not in _SPELL_CORRECTORS:
+        params = SPELL_PARAMS.get(dataset_key, {"lambda_edit": 1.0, "mu_freq": 0.05})
         _SPELL_CORRECTORS[k] = SpellCorrector(
             PREDICTORS[model_key][dataset_key],
-            max_edit_dist=max_edit_dist, lambda_edit=0.5, mu_freq=0.1,
+            max_edit_dist=max_edit_dist,
+            lambda_edit=params["lambda_edit"],
+            mu_freq=params["mu_freq"],
             weight_mode=weight_mode,
         )
     return _SPELL_CORRECTORS[k]
 
 
-def fast_predict_ngram(context, prefix, model, top_k=5):
+def fast_predict_ngram(context, prefix, model, dataset_key, top_k=5):
     candidates = model.get_candidates(prefix)
+    lambdas = BEST_LAMBDAS.get(dataset_key)
     scored = [
-        (word, model.interpolated_probability(context=context, word=word, lambdas=BEST_LAMBDAS))
+        (word, model.interpolated_probability(context=context, word=word, lambdas=lambdas))
         for word in candidates
     ]
     ranked = heapq.nsmallest(
@@ -211,7 +228,7 @@ def cached_suggest(text, top_k, model_key, dataset_key, spell_on, weight_mode, m
             len(corrector.get_spell_candidates(prefix)) if prefix else len(corrector.word_vocab)
         )
     elif model_key == "ngram":
-        suggestions, candidate_count = fast_predict_ngram(context, prefix, predictor, top_k)
+        suggestions, candidate_count = fast_predict_ngram(context, prefix, predictor, dataset_key, top_k)
     else:
         suggestions = predictor.predict(context, prefix=prefix, top_k=top_k, include_scores=True)
         candidate_count = len(predictor.get_candidates(prefix))
@@ -1163,8 +1180,9 @@ def suggest():
 if __name__ == "__main__":
     print(f"N-gram:      {AVAILABLE['ngram']}")
     print(f"Transformer: {AVAILABLE['transformer']}")
+    print(f"Open:        http://{ARGS.host}:{ARGS.port}")
     app.run(
-        host="0.0.0.0",
+        host=ARGS.host,
         port=ARGS.port,
         debug=False,
         use_reloader=False,

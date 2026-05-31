@@ -272,7 +272,7 @@ def main():
     if args.dataset == "wikitext2":
         data_dir   = project_root / "scr/data/wikitext_2_transformer"
         model_dir  = project_root / "models/transformer/wikitext2"
-        ngram_pkl  = project_root / "models/ngram/wikitext2_ngram_model.pkl"
+        ngram_pkl  = project_root / "models/ngram/Wikitext2_ngram_model.pkl"
         prefix     = "wikitext2"
         train_text = data_dir / f"{prefix}_transformer_train.txt"
         val_text = data_dir / f"{prefix}_transformer_val.txt"

@@ -9,9 +9,13 @@ __pycache__/
 # i need to remove Project_overview.pdf
 
 Project_overview.pdf
+
 run_colab.ipynb
 # generated data/models
 models/
 *.pkl
 scr/data/
 scr/data_analysis.ipynb
+scr/transformer_model_demo_fast.py
+projectReport.tex
+project_overview.txt

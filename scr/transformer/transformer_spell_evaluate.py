@@ -46,7 +46,7 @@ DATASET_CONFIGS = {
             "models/ngram/tinystories_ngram_model.pkl",
         ],
         "train_text": "scr/data/tiny_stories_transformer/tinystories_transformer_train.txt",
-        "spell_eval_dir": "scr/data/spell_eval/tinystories",
+        "spell_eval_dir": "scr/data/data_for_spell_evaluation/tinystories",
     },
     "wikitext2": {
         "model_dir": "models/transformer/wikitext2",
@@ -55,7 +55,7 @@ DATASET_CONFIGS = {
             "models/ngram/wikitext2_ngram_model.pkl",
         ],
         "train_text": "scr/data/wikitext_2_transformer/wikitext2_transformer_train.txt",
-        "spell_eval_dir": "scr/data/spell_eval/wikitext2",
+        "spell_eval_dir": "scr/data/data_for_spell_evaluation/wikitext2",
     },
     "mobile_sms": {
         "model_dir": "models/transformer/mobile_sms",
@@ -63,7 +63,7 @@ DATASET_CONFIGS = {
             "models/ngram/mobile_sms_ngram_model.pkl",
         ],
         "train_text": "scr/data/mobile_transformers/train_sms.txt",
-        "spell_eval_dir": "scr/data/spell_eval/mobile_sms",
+        "spell_eval_dir": "scr/data/data_for_spell_evaluation/mobile_sms",
     },
 }
 

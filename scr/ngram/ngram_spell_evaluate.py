@@ -45,9 +45,10 @@ DATASET_CONFIGS = {
             "models/ngram/tinystories_ngram_model.pkl",
         ],
         "lambda_candidates": [
+            "results/metrics/ngram_validation_and_test_results_metrics/best_ngram_lambdas.json",
             "results/metrics/best_ngram_lambdas.json",
         ],
-        "spell_eval_dir": "scr/data/spell_eval/tinystories",
+        "spell_eval_dir": "scr/data/data_for_spell_evaluation/tinystories",
     },
     "wikitext2": {
         "model_candidates": [
@@ -55,19 +56,21 @@ DATASET_CONFIGS = {
             "models/ngram/wikitext2_ngram_model.pkl",
         ],
         "lambda_candidates": [
+            "results/metrics/ngram_validation_and_test_results_metrics/best_ngram_lambdasWikitext2.json",
             "results/metrics/best_ngram_lambdasWikitext2.json",
             "results/metrics/best_ngram_lambdas_wikitext2.json",
         ],
-        "spell_eval_dir": "scr/data/spell_eval/wikitext2",
+        "spell_eval_dir": "scr/data/data_for_spell_evaluation/wikitext2",
     },
     "mobile_sms": {
         "model_candidates": [
             "models/ngram/mobile_sms_ngram_model.pkl",
         ],
         "lambda_candidates": [
+            "results/metrics/ngram_validation_and_test_results_metrics/best_ngram_lambdas_mobile_sms.json",
             "results/metrics/best_ngram_lambdas_mobile_sms.json",
         ],
-        "spell_eval_dir": "scr/data/spell_eval/mobile_sms",
+        "spell_eval_dir": "scr/data/data_for_spell_evaluation/mobile_sms",
     },
 }
 

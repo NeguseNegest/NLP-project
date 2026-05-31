@@ -23,9 +23,9 @@ EDIT_TYPES = ("insertion", "deletion", "substitution", "transposition")
 
 
 DATASETS = {
-    "tinystories": "scr/data/tiny_stories/tinystories_test.txt",
-    "wikitext2": "scr/data/wikitext_2/wikitext2_test.txt",
-    "mobile_sms": "scr/data/mobile_ngram/test_sms.txt",
+    "tinystories": "scr/data/ngram_tiny_stories/tinystories_test.txt",
+    "wikitext2": "scr/data/ngram_wikitext_2/wikitext2_test.txt",
+    "mobile_sms": "scr/data/ngram_mobile/test_sms.txt",
 }
 
 
@@ -239,7 +239,7 @@ def parse_args():
     )
     parser.add_argument(
         "--output_dir",
-        default=str(project_root / "scr/data/spell_eval"),
+        default=str(project_root / "scr/data/data_for_spell_evaluation"),
     )
     parser.add_argument(
         "--project_root",

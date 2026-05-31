@@ -29,25 +29,27 @@ EDIT_TYPES = ("insertion", "deletion", "substitution", "transposition")
 
 DATASET_CONFIGS = {
     "tinystories": {
-        "validation_text": "scr/data/tiny_stories/tinystories_val.txt",
+        "validation_text": "scr/data/ngram_tiny_stories/tinystories_val.txt",
         "ngram_model_candidates": [
             "models/ngram/Tiny_stories_ngram_model.pkl",
             "models/ngram/tiny_stories_ngram_model.pkl",
             "models/ngram/tinystories_ngram_model.pkl",
         ],
         "lambda_candidates": [
+            "results/metrics/ngram_validation_and_test_results_metrics/best_ngram_lambdas.json",
             "results/metrics/best_ngram_lambdas.json",
         ],
         "transformer_model_dir": "models/transformer/tinystories",
         "transformer_train_text": "scr/data/tiny_stories_transformer/tinystories_transformer_train.txt",
     },
     "wikitext2": {
-        "validation_text": "scr/data/wikitext_2/wikitext2_val.txt",
+        "validation_text": "scr/data/ngram_wikitext_2/wikitext2_val.txt",
         "ngram_model_candidates": [
             "models/ngram/Wikitext2_ngram_model.pkl",
             "models/ngram/wikitext2_ngram_model.pkl",
         ],
         "lambda_candidates": [
+            "results/metrics/ngram_validation_and_test_results_metrics/best_ngram_lambdasWikitext2.json",
             "results/metrics/best_ngram_lambdasWikitext2.json",
             "results/metrics/best_ngram_lambdas_wikitext2.json",
         ],
@@ -55,11 +57,12 @@ DATASET_CONFIGS = {
         "transformer_train_text": "scr/data/wikitext_2_transformer/wikitext2_transformer_train.txt",
     },
     "mobile_sms": {
-        "validation_text": "scr/data/mobile_ngram/validate_sms.txt",
+        "validation_text": "scr/data/ngram_mobile/validate_sms.txt",
         "ngram_model_candidates": [
             "models/ngram/mobile_sms_ngram_model.pkl",
         ],
         "lambda_candidates": [
+            "results/metrics/ngram_validation_and_test_results_metrics/best_ngram_lambdas_mobile_sms.json",
             "results/metrics/best_ngram_lambdas_mobile_sms.json",
         ],
         "transformer_model_dir": "models/transformer/mobile_sms",
