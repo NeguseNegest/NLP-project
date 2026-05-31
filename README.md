@@ -96,7 +96,7 @@ python scr/ngram/ngram_train.py \
   --train_path scr/data/ngram_tiny_stories/tinystories_train.txt \
   --save_path models/ngram/Tiny_stories_ngram_model.pkl \
   --max_n_gram 4 \
-  --min_count 1
+  --min_count 2
 ```
 
 WikiText-2:
@@ -106,7 +106,7 @@ python scr/ngram/ngram_train.py \
   --train_path scr/data/ngram_wikitext_2/wikitext2_train.txt \
   --save_path models/ngram/Wikitext2_ngram_model.pkl \
   --max_n_gram 4 \
-  --min_count 1
+  --min_count 2
 ```
 
 Mobile SMS:
@@ -388,6 +388,16 @@ python scr/gui_app.py --host 127.0.0.1 --port 8080
 The first command loads all models and all datasets explicitly. It is equivalent to the default `python scr/gui_app.py`.
 
 Use `--host 0.0.0.0` only when exposing the app from a remote environment such as Colab.
+
+### Fast Transformer Demo
+
+For a more responsive live Transformer demo, run:
+
+```bash
+python scr/gui_app_demo_fast.py --models transformer --datasets mobile_sms --port 8000
+```
+
+This uses the same GUI, checkpoints, tokenizer, and word vocabulary, but swaps in an optimized Transformer predictor. The reported experiments use first-BPE-token scoring, `score(w) = P(t1 | context)`. The fast demo keeps that score for one-token candidates and scores multi-token candidates autoregressively, `P(t1 | context) * P(t2 | context,t1) * ...`, while batching and pruning candidates for speed. Treat it as a demo/runtime optimization, not the source of the reported results.
 
 ## Results Overview
 
