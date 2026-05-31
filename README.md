@@ -78,13 +78,14 @@ Final preprocessed sizes:
 
 ## Environment
 
-Install the required Python packages in your preferred environment:
+Create the Conda environment:
 
 ```bash
-pip install torch flask tqdm matplotlib datasets numpy
+conda env create -f enviroment.yml
+conda activate nlp-project
 ```
 
-Use the CUDA-specific PyTorch install command from https://pytorch.org/get-started/locally/ if training Transformers on a GPU.
+The file is named `enviroment.yml` in this repository. It installs PyTorch, Flask, NumPy, Matplotlib, tqdm, Hugging Face Datasets, and notebook support. If you train Transformers on a CUDA GPU, install the CUDA-specific PyTorch build from https://pytorch.org/get-started/locally/ inside the activated environment.
 
 ## Train the N-gram Models
 
