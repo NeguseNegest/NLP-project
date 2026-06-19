@@ -2,6 +2,8 @@
 
 This project implements and evaluates a spell-aware autocomplete system across three text domains: TinyStories, WikiText-2, and Mobile SMS. It compares a word-level interpolated n-gram language model against a BPE-based Transformer, and evaluates both clean word prediction and misspelled-word correction.
 
+Project paper: [Spell-Aware Word Prediction Using N-gram and Transformer Language Models](./Spell_Aware_Word_Prediction_Using_N_gram_and_Transformer_Language_Models.pdf).
+
 ## What This Project Achieved
 
 - Built a complete word-prediction pipeline with preprocessing, n-gram training, Transformer training, evaluation scripts, spell-correction evaluation, and a local Flask GUI.
@@ -44,6 +46,7 @@ Main findings:
 NLP-project/
 ├── README.md
 ├── enviroment.yml
+├── Spell_Aware_Word_Prediction_Using_N_gram_and_Transformer_Language_Models.pdf
 ├── models/
 │   ├── ngram/
 │   │   ├── Tiny_stories_ngram_model.pkl
