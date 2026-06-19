@@ -1,11 +1,49 @@
 # Spell-Aware Word Prediction
 
+This project implements and evaluates a spell-aware autocomplete system across three text domains: TinyStories, WikiText-2, and Mobile SMS. It compares a word-level interpolated n-gram language model against a BPE-based Transformer, and evaluates both clean word prediction and misspelled-word correction.
+
+## What This Project Achieved
+
+- Built a complete word-prediction pipeline with preprocessing, n-gram training, Transformer training, evaluation scripts, spell-correction evaluation, and a local Flask GUI.
+- Trained and tuned interpolated 4-gram models for TinyStories, WikiText-2, and Mobile SMS.
+- Trained decoder-only Transformer models with dataset-specific BPE tokenizers and selected practical Transformer configurations through grid search.
+- Added spell-aware prediction using Damerau-Levenshtein candidate generation and language-model reranking.
+- Evaluated models with top-k accuracy, saved-keystroke ratio, and perplexity.
+- Built an interactive GUI for switching between datasets, models, and spell-correction strategies.
+
+## Key Results
+
+Clean word prediction is strongest with the Transformer. At top-3, it reaches 97.18% accuracy on TinyStories, 93.74% on WikiText-2, and 97.70% on Mobile SMS. The n-gram model has lower accuracy, but still saves many keystrokes because prefix filtering becomes informative after a few typed characters.
+
+| Dataset | N-gram Top-3 Acc | Transformer Top-3 Acc | N-gram Top-3 KS | Transformer Top-3 KS | N-gram PPL | Transformer PPL |
+|---|---:|---:|---:|---:|---:|---:|
+| TinyStories | 51.42% | 97.18% | 68.03% | 76.71% | 258.52 | 5.68 |
+| WikiText-2 | 26.08% | 93.74% | 52.89% | 57.88% | 16,357.84 | 53.44 |
+| Mobile SMS | 27.59% | 97.70% | 57.59% | 67.42% | 2,621.21 | 65.63 |
+
+Spell correction shows a different pattern. S1, the one-edit strategy, is consistently strongest because it keeps the correction candidate set smaller. The n-gram model is stronger on TinyStories and WikiText-2 spell correction, while the Transformer is strongest on Mobile SMS.
+
+| Dataset | Best S1 N-gram Top-3 Acc | Best S1 Transformer Top-3 Acc | Best S1 N-gram Top-3 KS | Best S1 Transformer Top-3 KS |
+|---|---:|---:|---:|---:|
+| TinyStories | 96.40% | 93.39% | 58.41% | 55.43% |
+| WikiText-2 | 84.70% | 80.71% | 39.41% | 29.98% |
+| Mobile SMS | 90.82% | 92.86% | 37.65% | 44.53% |
+
+Main findings:
+
+- The Transformer is much better for clean next-word prediction.
+- Saved-keystroke ratio improves less dramatically than accuracy because the prefix index already narrows candidates as the user types.
+- The n-gram model remains competitive for spell correction because it scores whole-word candidates directly.
+- The Transformer performs best on Mobile SMS spell correction, where messages are short and patterned.
+- S2 and S3 are weaker than S1 because allowing two edits introduces many plausible wrong candidates; S3 only slightly changes results compared with S2.
+- Perplexity should be interpreted carefully across model families because n-gram perplexity is word-level, while Transformer perplexity is BPE-token-level.
+
 ## Project Structure
 
 ```text
 NLP-project/
 ├── README.md
-├── projectReport.tex
+├── enviroment.yml
 ├── models/
 │   ├── ngram/
 │   │   ├── Tiny_stories_ngram_model.pkl
@@ -96,7 +134,7 @@ python scr/ngram/ngram_train.py \
   --train_path scr/data/ngram_tiny_stories/tinystories_train.txt \
   --save_path models/ngram/Tiny_stories_ngram_model.pkl \
   --max_n_gram 4 \
-  --min_count 2
+  --min_count 1
 ```
 
 WikiText-2:
@@ -106,7 +144,7 @@ python scr/ngram/ngram_train.py \
   --train_path scr/data/ngram_wikitext_2/wikitext2_train.txt \
   --save_path models/ngram/Wikitext2_ngram_model.pkl \
   --max_n_gram 4 \
-  --min_count 2
+  --min_count 1
 ```
 
 Mobile SMS:
@@ -399,26 +437,12 @@ python scr/gui_app_demo_fast.py --models transformer --datasets mobile_sms --por
 
 This uses the same GUI, checkpoints, tokenizer, and word vocabulary, but swaps in an optimized Transformer predictor. The reported experiments use first-BPE-token scoring, `score(w) = P(t1 | context)`. The fast demo keeps that score for one-token candidates and scores multi-token candidates autoregressively, `P(t1 | context) * P(t2 | context,t1) * ...`, while batching and pruning candidates for speed. Treat it as a demo/runtime optimization, not the source of the reported results.
 
-## Results Overview
+## Result Files
 
-The final report compares clean word prediction and spell-aware prediction across TinyStories, WikiText-2, and Mobile SMS.
+Full metrics are stored under `results/metrics/`, with plots under `results/plots/`. The most important result groups are:
 
-Clean word prediction: the Transformer gives the highest top-k accuracy on all three datasets. At top-3, the Transformer reaches 97.18% on TinyStories, 93.74% on WikiText-2, and 97.70% on Mobile SMS. The n-gram model is weaker in accuracy but still saves many keystrokes because prefix filtering quickly narrows the candidate set.
-
-Spell correction: S1, the one-edit Damerau-Levenshtein strategy, is the strongest overall because it keeps the candidate set smaller. The n-gram model performs strongly on TinyStories and WikiText-2 because it scores whole-word candidates directly. The Transformer performs best on Mobile SMS, where the messages are short and repetitive.
-
-Reported top-3 saved-keystroke ratios for clean word prediction:
-
-| Dataset | N-gram | Transformer |
-|---|---:|---:|
-| TinyStories | 68.03% | 76.71% |
-| WikiText-2 | 52.89% | 57.88% |
-| Mobile SMS | 57.59% | 67.42% |
-
-Reported top-3 spell-correction accuracies for S1:
-
-| Dataset | N-gram | Transformer |
-|---|---:|---:|
-| TinyStories | 96.40% | 93.39% |
-| WikiText-2 | 84.70% | 80.71% |
-| Mobile SMS | 90.82% | 92.86% |
+- `results/metrics/ngram_validation_and_test_results_metrics/`: n-gram lambda tuning and word-prediction metrics.
+- `results/metrics/transformer_word_prediction/`: Transformer word-prediction metrics and grid-search logs.
+- `results/metrics/ngram_spell_metrics/`: n-gram spell-correction metrics.
+- `results/metrics/transformer_spell_metrics/`: Transformer spell-correction metrics.
+- `results/metrics/transformer_perplexity_wikitext2_tinystories/`: Transformer perplexity runs for TinyStories and WikiText-2.
