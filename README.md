@@ -1,17 +1,64 @@
 # Spell-Aware Word Prediction
 
-This project implements and evaluates a spell-aware autocomplete system across three text domains: TinyStories, WikiText-2, and Mobile SMS. It compares a word-level interpolated n-gram language model against a BPE-based Transformer, and evaluates both clean word prediction and misspelled-word correction.
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![Transformer](https://img.shields.io/badge/Model-Decoder--only_Transformer-7B2CBF)](#train-the-transformer-models)
+[![N-gram](https://img.shields.io/badge/Model-Interpolated_4--gram-2E8B57)](#train-the-n-gram-models)
+[![BPE](https://img.shields.io/badge/Tokenization-BPE-F59E0B)](#train-the-transformer-models)
+[![Damerau-Levenshtein](https://img.shields.io/badge/Spell_correction-Damerau--Levenshtein-C2410C)](#spell-correction-evaluation)
+[![Flask](https://img.shields.io/badge/Flask-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![NumPy](https://img.shields.io/badge/NumPy-013243?logo=numpy&logoColor=white)](https://numpy.org/)
+[![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?logo=matplotlib&logoColor=white)](https://matplotlib.org/)
+[![Hugging Face Datasets](https://img.shields.io/badge/Hugging_Face-Datasets-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/docs/datasets/)
+[![Jupyter](https://img.shields.io/badge/Jupyter-F37626?logo=jupyter&logoColor=white)](https://jupyter.org/)
+[![Conda](https://img.shields.io/badge/Conda-44A833?logo=anaconda&logoColor=white)](https://docs.conda.io/)
 
-Project paper: [Spell-Aware Word Prediction Using N-gram and Transformer Language Models](./Spell_Aware_Word_Prediction_Using_N_gram_and_Transformer_Language_Models.pdf).
+> An end-to-end NLP system that compares statistical and neural language models, adds typo-tolerant candidate ranking, and exposes the result through an interactive web application.
 
-## What This Project Achieved
+## Table of Contents
 
-- Built a complete word-prediction pipeline with preprocessing, n-gram training, Transformer training, evaluation scripts, spell-correction evaluation, and a local Flask GUI.
-- Trained and tuned interpolated 4-gram models for TinyStories, WikiText-2, and Mobile SMS.
-- Trained decoder-only Transformer models with dataset-specific BPE tokenizers and selected practical Transformer configurations through grid search.
-- Added spell-aware prediction using Damerau-Levenshtein candidate generation and language-model reranking.
-- Evaluated models with top-k accuracy, saved-keystroke ratio, and perplexity.
-- Built an interactive GUI for switching between datasets, models, and spell-correction strategies.
+- [Overview](#overview)
+- [Demo](#demo)
+- [Engineering Highlights](#engineering-highlights)
+- [Key Results](#key-results)
+  - [Visual Results](#visual-results)
+- [From Theory to Product: Methodology](#from-theory-to-product-methodology)
+- [Project Structure](#project-structure)
+- [Datasets](#datasets)
+- [Environment](#environment)
+- [Train the N-gram Models](#train-the-n-gram-models)
+- [Train the Transformer Models](#train-the-transformer-models)
+- [Evaluate Word Prediction](#evaluate-word-prediction)
+- [Spell Correction Evaluation](#spell-correction-evaluation)
+- [Run the GUI Locally](#run-the-gui-locally)
+  - [Fast Transformer Demo](#fast-transformer-demo)
+- [Result Files](#result-files)
+
+## Overview
+
+This project implements and evaluates a spell-aware autocomplete system across three text domains: TinyStories, WikiText-2, and Mobile SMS. It compares a word-level interpolated n-gram language model with a custom decoder-only Transformer, then extends both with typo-tolerant candidate generation and reranking.
+
+The work covers the complete ML lifecycle: dataset-specific preprocessing, model and tokenizer implementation, training, hyperparameter search, quantitative evaluation, inference optimization, and deployment in a local Flask interface. The Transformer and BPE tokenizer are implemented with PyTorch rather than delegated to a high-level Transformer library.
+
+Project paper: [Spell-Aware Word Prediction Using N-gram and Transformer Language Models](./projectPDFVersion.pdf).
+
+## Demo
+
+<video src="https://raw.githubusercontent.com/NeguseNegest/NLP-project/main/_.mp4" controls width="100%">
+  Your browser does not support embedded video. Use the link below to open the demo.
+</video>
+
+[Open or download the MP4 demo](./_.mp4).
+
+## Engineering Highlights
+
+| Area | What the implementation demonstrates |
+|---|---|
+| NLP and ML fundamentals | Custom BPE tokenization, causal multi-head self-attention, interpolated n-grams, add-one smoothing, and weighted Damerau-Levenshtein distance |
+| Experimental design | Comparable evaluation across three domains, validation-driven interpolation weights, Transformer architecture search, and reproducible metric artifacts |
+| Inference engineering | Vocabulary prefix indexes, pre-tokenized Transformer candidates, device selection, context-logit caching, and full-ranking reuse |
+| Product engineering | A Flask GUI that switches datasets, model families, and spelling strategies, with automatic CUDA, MPS, or CPU device selection |
+| Technical judgment | An explicit accuracy-latency comparison showing where a simpler statistical model remains preferable to a neural model |
 
 ## Key Results
 
@@ -40,13 +87,114 @@ Main findings:
 - S2 and S3 are weaker than S1 because allowing two edits introduces many plausible wrong candidates; S3 only slightly changes results compared with S2.
 - Perplexity should be interpreted carefully across model families because n-gram perplexity is word-level, while Transformer perplexity is BPE-token-level.
 
+### Visual Results
+
+![Top-1 saved-keystroke ratio summary for clean word prediction and n-gram spell-aware strategies](./results/top1saved.png)
+
+*Top-1 saved-keystroke ratio across datasets. The left panel compares clean word prediction; the right panel shows how the n-gram spell-aware system changes as the maximum edit distance increases.*
+
+The Mobile SMS comparison below shows the same spell-aware tradeoff for both model families. S1 produces the strongest accuracy and keystroke savings because its one-edit constraint excludes many plausible but incorrect candidates.
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="./results/plots/ngram_spell_plots/mobil_sms/ngram_spell_mobile_sms_top3_strategy_comparison.png" alt="Mobile SMS n-gram top-3 spell strategy comparison">
+    </td>
+    <td width="50%">
+      <img src="./results/plots/transformer_spell_plots/mobile_sms/transformer_spell_mobile_sms_top3_strategy_comparison.png" alt="Mobile SMS Transformer top-3 spell strategy comparison">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><strong>N-gram</strong></td>
+    <td align="center"><strong>Transformer</strong></td>
+  </tr>
+</table>
+
+## From Theory to Product: Methodology
+
+The system treats autocomplete as a **retrieve-then-rank** problem. Retrieval reduces the vocabulary to plausible completions; ranking combines linguistic context with spelling evidence to decide which candidates should be shown first.
+
+```mermaid
+flowchart LR
+    A[Typed text] --> B[Context + active prefix]
+    B --> C{Prediction mode}
+    C -->|Clean prefix| D[Prefix-index lookup]
+    C -->|Spell-aware| E[Damerau-Levenshtein candidates]
+    D --> F[N-gram or Transformer probability]
+    E --> G[LM probability + edit penalty + frequency prior]
+    F --> H[Ranked top-k suggestions]
+    G --> H
+```
+
+### 1. Candidate retrieval turns generation into a bounded ranking task
+
+The input parser separates completed words from the active prefix: `"the quick br"` becomes context `the quick` and prefix `br`, while a trailing space requests a new word. For clean autocomplete, every vocabulary word is indexed by all of its prefixes, so a lookup returns only matching candidates. Spell-aware mode instead compares the typed prefix with the equally long prefix of each plausible vocabulary word, allowing the system to recover the intended completion before the word is finished.
+
+The two model families receive data suited to their assumptions. The n-gram pipeline lowercases and cleans text into word-level sentences. The Transformer pipeline preserves more punctuation, case, and subword structure for BPE tokenization.
+
+### 2. Interpolated n-grams provide a fast, interpretable baseline
+
+The statistical model estimates a word from up to three preceding words and blends unigram through four-gram probabilities:
+
+$$
+P(w_i \mid h_i) = \sum_{n=1}^{4} \lambda_n P_n(w_i \mid w_{i-n+1}, \ldots, w_{i-1}),
+\qquad \sum_{n=1}^{4}\lambda_n = 1.
+$$
+
+Each component uses add-one smoothing so unseen events retain non-zero probability. The interpolation weights are selected per dataset by grid search using top-3 saved-keystroke ratio as the validation objective. This lets the model adapt to domain structure: TinyStories favors four-gram context, while WikiText-2 and Mobile SMS benefit from different mixtures of shorter histories.
+
+Because candidates are complete words, the n-gram model scores each option directly. That makes it inexpensive, explainable, and especially effective when edit distance has already produced a focused correction set.
+
+### 3. The custom causal Transformer captures longer-range context
+
+The neural model uses a dataset-specific BPE tokenizer and a decoder-only architecture built from PyTorch components. The standard configuration has four Transformer blocks, four attention heads, 256-dimensional embeddings, learned positional embeddings, pre-normalized residual connections, causal self-attention, and a feed-forward expansion to four times the embedding dimension.
+
+Training converts each corpus to compact token-ID files and memory-maps overlapping input/target windows. The model minimizes next-token cross-entropy with AdamW, evaluates validation loss every 100 steps, and retains the best checkpoint. Architecture search compares model depth, head count, embedding width, and training-window stride; it records both validation loss and autocomplete metrics, with top-1 accuracy used to rank runs.
+
+Causal masking enforces the language-modeling constraint that position $t$ can attend only to positions at or before $t$:
+
+$$
+\operatorname{Attention}(Q,K,V)
+= \operatorname{softmax}\left(\frac{QK^\top}{\sqrt{d_k}} + M_{\text{causal}}\right)V.
+$$
+
+At inference time, word candidates share one cached next-token distribution for the current context. The reported experiments rank a candidate by the probability of its first BPE token, a deliberate approximation that avoids a separate autoregressive pass for every word. The fast GUI demo retains that score for one-token words and scores multi-token candidates autoregressively, then batches and prunes work to improve responsiveness. This distinction makes the evaluation protocol reproducible while exposing the latency-quality tradeoff of subword-based word completion.
+
+### 4. Spell-aware autocomplete combines three sources of evidence
+
+This project corrects an unfinished prefix, not a completed sentence. Candidate generation uses Damerau-Levenshtein distance, which models insertion, deletion, substitution, and adjacent transposition errors. Three strategies test the effect of widening and weighting the search:
+
+| Strategy | Search rule | Intended tradeoff |
+|---|---|---|
+| S1 | Standard distance, maximum 1 edit | Small, high-precision candidate set |
+| S2 | Standard distance, maximum 2 edits | Higher recall with more ambiguity |
+| S3 | Weighted distance, maximum 2 edits | Lower penalty for likely operations such as transposition |
+
+Candidates are reranked with a log-linear score:
+
+$$
+\operatorname{score}(c)
+= \log P_{\text{LM}}(c \mid \text{context})
+- \lambda_{\text{edit}}\,\widetilde d(c)
++ \mu_{\text{freq}}\,\widetilde f(c).
+$$
+
+Here, $\widetilde d$ is edit distance normalized by the permitted maximum and $\widetilde f$ is log word frequency normalized over the vocabulary. The first term rewards contextual fit, the second penalizes more aggressive corrections, and the third prevents rare but technically valid candidates from dominating. The two coefficients are tuned on fixed, synthetically corrupted validation examples rather than on the test set.
+
+### 5. Evaluation measures usefulness, not only language-model fit
+
+Top-k accuracy asks whether the intended word appears among the suggestions. Saved-keystroke ratio additionally measures whether it appears early enough to reduce typing, making it the closer proxy for product value. Perplexity measures model uncertainty, but is reported with a clear tokenization caveat: word-level n-gram and BPE-level Transformer perplexities are not directly equivalent.
+
+The resulting comparison has no artificial single winner. The Transformer dominates clean prediction, the n-gram model remains strong and fast for word-level spell reranking, and the best Mobile SMS correction result comes from the Transformer. That outcome motivates a practical hybrid design: inexpensive filtering followed by stronger contextual reranking where its latency cost is justified.
+
 ## Project Structure
 
 ```text
 NLP-project/
 ├── README.md
+├── _.mp4
 ├── enviroment.yml
-├── Spell_Aware_Word_Prediction_Using_N_gram_and_Transformer_Language_Models.pdf
+├── projectPDFVersion.pdf
 ├── models/
 │   ├── ngram/
 │   │   ├── Tiny_stories_ngram_model.pkl

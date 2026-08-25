@@ -6,11 +6,11 @@
 # Python
 __pycache__/
 *.py[cod]
-# i need to remove Project_overview.pdf
-
+# Local reports and notebooks
 Project_overview.pdf
-
+projectTexVersion.tex
 run_colab.ipynb
+
 # generated data/models
 models/
 *.pkl
