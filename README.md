@@ -44,11 +44,9 @@ Project paper: [Spell-Aware Word Prediction Using N-gram and Transformer Languag
 
 ## Demo
 
-<video src="https://raw.githubusercontent.com/NeguseNegest/NLP-project/main/_.mp4" controls width="100%">
-  Your browser does not support embedded video. Use the link below to open the demo.
-</video>
+![Spell-aware autocomplete demo](./_.gif)
 
-[Open or download the MP4 demo](./_.mp4).
+[Open the GIF demo](./_.gif).
 
 ## Engineering Highlights
 
@@ -154,8 +152,8 @@ Training converts each corpus to compact token-ID files and memory-maps overlapp
 Causal masking enforces the language-modeling constraint that position $t$ can attend only to positions at or before $t$:
 
 $$
-\operatorname{Attention}(Q,K,V)
-= \operatorname{softmax}\left(\frac{QK^\top}{\sqrt{d_k}} + M_{\text{causal}}\right)V.
+\mathrm{Attention}(Q,K,V)
+= \mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d_k}} + M_{\text{causal}}\right)V.
 $$
 
 At inference time, word candidates share one cached next-token distribution for the current context. The reported experiments rank a candidate by the probability of its first BPE token, a deliberate approximation that avoids a separate autoregressive pass for every word. The fast GUI demo retains that score for one-token words and scores multi-token candidates autoregressively, then batches and prunes work to improve responsiveness. This distinction makes the evaluation protocol reproducible while exposing the latency-quality tradeoff of subword-based word completion.
@@ -173,7 +171,7 @@ This project corrects an unfinished prefix, not a completed sentence. Candidate 
 Candidates are reranked with a log-linear score:
 
 $$
-\operatorname{score}(c)
+\mathrm{score}(c)
 = \log P_{\text{LM}}(c \mid \text{context})
 - \lambda_{\text{edit}}\,\widetilde d(c)
 + \mu_{\text{freq}}\,\widetilde f(c).
@@ -192,7 +190,7 @@ The resulting comparison has no artificial single winner. The Transformer domina
 ```text
 NLP-project/
 ├── README.md
-├── _.mp4
+├── _.gif
 ├── enviroment.yml
 ├── projectPDFVersion.pdf
 ├── models/
